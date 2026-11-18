@@ -3666,6 +3666,234 @@ BOOST_AUTO_TEST_CASE(TestMentionQueryClosedOnEscapeAndNotReopenedByTypingOn)
     );
 }
 
+//--------------------------------------------------------------------------
+// Hashtag query: the counterpart of the mention query for a "#word" (hashtagQueryChanged() and the others), off by default.
+//--------------------------------------------------------------------------
+
+BOOST_AUTO_TEST_CASE(TestHashtagQueryIsOffUntilHostOptsIn)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            QSignalSpy spy(&editor,&AbstractMessageEditor::hashtagQueryChanged);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("#tr"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK(!editor.textEdit()->hashtagQueryAtCursor().isActive);
+            UISE_TEST_CHECK_EQUAL(spy.count(),0);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHashtagQuerySignalTracksTypedWord)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            QSignalSpy spy(&editor,&AbstractMessageEditor::hashtagQueryChanged);
+            QSignalSpy mentionSpy(&editor,&AbstractMessageEditor::mentionQueryChanged);
+
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("#"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE_EQUAL(spy.count(),1);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.at(0).at(0).toString(),QString{});
+            UISE_TEST_CHECK_EQUAL(spy.at(0).at(1).toInt(),0);
+
+            cursor.insertText(QStringLiteral("tr"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE(spy.count()>=2);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.last().at(0).toString(),QStringLiteral("tr"));
+
+            // letters of any script and the underscore belong to the word
+            cursor.insertText(QStringLiteral("_мир"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL_QSTR(spy.last().at(0).toString(),QStringLiteral("tr_мир"));
+
+            // a '#' word is no '@' word
+            UISE_TEST_CHECK_EQUAL(mentionSpy.count(),0);
+
+            QSignalSpy closedSpy(&editor,&AbstractMessageEditor::hashtagQueryClosed);
+            cursor.insertText(QStringLiteral(" "));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(closedSpy.count(),1);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHashtagQueryNeedsAHashThatIsNotGlued)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            QSignalSpy spy(&editor,&AbstractMessageEditor::hashtagQueryChanged);
+
+            // glued to a letter or a digit before it: "abc#d", "C#x", "5#6"
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("abc#d C#x 5#6"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(spy.count(),0);
+            UISE_TEST_CHECK(!editor.textEdit()->hashtagQueryAtCursor().isActive);
+
+            // after a bracket and after another '#': a tag
+            cursor.insertText(QStringLiteral(" (#a"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK(editor.textEdit()->hashtagQueryAtCursor().isActive);
+            cursor.insertText(QStringLiteral(" ##b"));
+            editor.textEdit()->setTextCursor(cursor);
+            const auto query=editor.textEdit()->hashtagQueryAtCursor();
+            UISE_TEST_CHECK(query.isActive);
+            UISE_TEST_CHECK_EQUAL_QSTR(query.prefix,QStringLiteral("b"));
+
+            // a heading marker is not a tag: the '#' is followed by a space
+            MessageEditor other;
+            other.textEdit()->setHashtagDetectionEnabled(true);
+            auto otherCursor=other.textEdit()->textCursor();
+            otherCursor.insertText(QStringLiteral("# Title"));
+            other.textEdit()->setTextCursor(otherCursor);
+            UISE_TEST_CHECK(!other.textEdit()->hashtagQueryAtCursor().isActive);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHashtagQuerySuppressedInFenceLinkAndSelection)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            emit editor.toolbar()->codeBlockRequested();
+            QSignalSpy fenceSpy(&editor,&AbstractMessageEditor::hashtagQueryChanged);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral(" #x"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(fenceSpy.count(),0);
+        }
+    );
+
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            editor.insertLink(QStringLiteral("https://example.com"),QStringLiteral("Example"));
+            auto inside=editor.textEdit()->textCursor();
+            inside.setPosition(3);
+            editor.textEdit()->setTextCursor(inside);
+
+            QSignalSpy linkSpy(&editor,&AbstractMessageEditor::hashtagQueryChanged);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("#"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK_EQUAL(linkSpy.count(),0);
+        }
+    );
+
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("#tag"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_CHECK(editor.textEdit()->hashtagQueryAtCursor().isActive);
+
+            // a selection means the user is not mid-typing a word
+            editor.textEdit()->selectAll();
+            UISE_TEST_CHECK(!editor.textEdit()->hashtagQueryAtCursor().isActive);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestHashtagQueryClosedOnEscapeAndNotReopenedByTypingOn)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("#tr"));
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE(editor.textEdit()->hashtagQueryAtCursor().isActive);
+
+            QSignalSpy closedSpy(&editor,&AbstractMessageEditor::hashtagQueryClosed);
+            QSignalSpy changedSpy(&editor,&AbstractMessageEditor::hashtagQueryChanged);
+            pressKey(editor,Qt::Key_Escape);
+            UISE_TEST_CHECK_EQUAL(closedSpy.count(),1);
+
+            // typing on in the same word does not reopen it
+            auto more=editor.textEdit()->textCursor();
+            more.insertText(QStringLiteral("av"));
+            editor.textEdit()->setTextCursor(more);
+            UISE_TEST_CHECK_EQUAL(changedSpy.count(),0);
+
+            // a new word does
+            auto next=editor.textEdit()->textCursor();
+            next.insertText(QStringLiteral(" #b"));
+            editor.textEdit()->setTextCursor(next);
+            UISE_TEST_CHECK_EQUAL(changedSpy.count(),1);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertHashtagTextWorksInEveryModeAndReplacesTheWord)
+{
+    for (auto mode : {MessageEditingMode::Wysiwyg,MessageEditingMode::Markdown,MessageEditingMode::Plaintext})
+    {
+        TestThread::instance()->execGuiThread(
+            [&]()
+            {
+                MessageEditor editor;
+                editor.setMessageEditingMode(mode);
+                editor.textEdit()->setHashtagDetectionEnabled(true);
+                auto cursor=editor.textEdit()->textCursor();
+                cursor.insertText(QStringLiteral("see #tra"));
+                editor.textEdit()->setTextCursor(cursor);
+
+                editor.insertHashtagText(QStringLiteral("#travel"));
+
+                // the typed word is REPLACED (one '#', not two), followed by a space at the end of the line; never an anchor
+                const auto text=editor.text(TextFormat::Plain);
+                UISE_TEST_CHECK(text.startsWith(QStringLiteral("see #travel")));
+                UISE_TEST_CHECK_EQUAL(text.count(QLatin1Char('#')),1);
+                UISE_TEST_CHECK(!text.contains(QStringLiteral("#tra#")));
+                UISE_TEST_CHECK(!editor.text(TextFormat::Html).contains(QStringLiteral("<a ")));
+            }
+        );
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestInsertHashtagTextReplacesTheWholeWordInTheMiddle)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.textEdit()->setHashtagDetectionEnabled(true);
+            auto cursor=editor.textEdit()->textCursor();
+            cursor.insertText(QStringLiteral("#trxyz and more"));
+            cursor.setPosition(3);
+            editor.textEdit()->setTextCursor(cursor);
+            UISE_TEST_REQUIRE(editor.textEdit()->hashtagQueryAtCursor().isActive);
+
+            // the caret is inside the word: what follows it in the word goes too, and no space is added in a sentence
+            editor.insertHashtagText(QStringLiteral("travel"));
+            const auto text=editor.text(TextFormat::Plain);
+            UISE_TEST_CHECK(text.startsWith(QStringLiteral("#travel and more")));
+            UISE_TEST_CHECK_EQUAL(text.count(QLatin1Char('#')),1);
+        }
+    );
+}
+
 BOOST_AUTO_TEST_CASE(TestBackspaceRemovesWholeMention)
 {
     TestThread::instance()->execGuiThread(

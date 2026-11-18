@@ -129,6 +129,17 @@ constexpr const char16_t NoBreakSpace=0x00a0;
 //! is this long, so a longer run is a paste, and a paste is not a mention gesture.
 constexpr const int MaxMentionQueryChars=64;
 
+//! Longest "#word" prefix reported through EnhancedTextEdit::hashtagQueryChanged(). A tag longer than the message search's
+//! (whitemclient search::MaxHashtagBytes, 128 bytes) is no tag; this is a guard against a pathological paste.
+constexpr const int MaxHashtagQueryChars=64;
+
+//! A character of a hashtag: letters, digits (of any script) and underscore, the message search's own rule
+//! (whitemclient search::findHashtags()).
+inline bool isHashtagWordChar(QChar ch)
+{
+    return ch.isLetterOrNumber() || ch==QLatin1Char('_');
+}
+
 //! Longest ":name" a shortcode auto-replace candidate can be -- see
 //! EnhancedTextEdit::shortcodeCandidateAtCursor(). Same reasoning as MaxMentionQueryChars just
 //! above (nothing a user TYPES is this long -- a longer run is a paste, which does not go
@@ -3100,6 +3111,9 @@ EnhancedTextEdit::EnhancedTextEdit(QWidget* parent) : QTextEdit(parent),
     // changed, so firing twice for one edit costs nothing.
     connect(this,&QTextEdit::textChanged,this,&EnhancedTextEdit::updateMentionQuery);
     connect(this,&QTextEdit::cursorPositionChanged,this,&EnhancedTextEdit::updateMentionQuery);
+    // The "#word" is watched the same way, for the same reasons (and does nothing while its detection is off).
+    connect(this,&QTextEdit::textChanged,this,&EnhancedTextEdit::updateHashtagQuery);
+    connect(this,&QTextEdit::cursorPositionChanged,this,&EnhancedTextEdit::updateHashtagQuery);
 
     // The spell pass reads the word being typed itself (see typedSpellWord()), so these three are
     // here only to notice when that word has CHANGED with no edit to provoke a rehighlight of its
@@ -3436,6 +3450,14 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
         m_dismissedMentionPosition=m_lastMentionQuery.position;
         m_lastMentionQuery=MentionQuery{};
         emit mentionQueryClosed();
+    }
+
+    // The same for a "#word": reported, never consumed.
+    if (event->key()==Qt::Key_Escape && m_lastHashtagQuery.isActive)
+    {
+        m_dismissedHashtagPosition=m_lastHashtagQuery.position;
+        m_lastHashtagQuery=HashtagQuery{};
+        emit hashtagQueryClosed();
     }
 
     QTextEdit::keyPressEvent(event);
@@ -4180,6 +4202,130 @@ bool EnhancedTextEdit::selectMentionQueryAtCursor(QTextCursor& cursor) const
     // The '@' is INCLUDED: an inserted mention replaces the whole gesture, not just its tail.
     cursor.setPosition(query.position);
     cursor.setPosition(query.position+1+query.prefix.size(),QTextCursor::KeepAnchor);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
+EnhancedTextEdit::HashtagQuery EnhancedTextEdit::hashtagQueryAtCursor() const
+{
+    HashtagQuery query;
+
+    if (!m_hashtagDetection)
+    {
+        return query;
+    }
+
+    const auto cursor=textCursor();
+    if (cursor.hasSelection())
+    {
+        // A selection means the user is not mid-typing a word.
+        return query;
+    }
+
+    // The same gates as mentionQueryAtCursor(), plus inline code: a fenced block, an anchor (a link, a mention), a table cell
+    // and a fixed-pitch run are not text a tag is typed in.
+    const auto block=cursor.block();
+    const auto blockFormat=cursor.blockFormat();
+    if (block.userState()==MessageEditorHighlighter::InFence
+        || blockFormat.hasProperty(QTextFormat::BlockCodeFence))
+    {
+        return query;
+    }
+    const auto charFormat=cursor.charFormat();
+    if (charFormat.isAnchor() || charFormat.fontFixedPitch() || cursor.currentTable()!=nullptr)
+    {
+        return query;
+    }
+
+    const auto text=block.text();
+    const auto offset=cursor.position()-block.position();
+
+    auto i=offset;
+    while (i>0 && isHashtagWordChar(text.at(i-1)))
+    {
+        --i;
+    }
+    if (i==0 || text.at(i-1)!=QLatin1Char('#'))
+    {
+        return query;
+    }
+    const auto hash=i-1;
+
+    // glued to a letter or a digit before it ("abc#tr", "C#"): not a tag
+    if (hash>0 && text.at(hash-1).isLetterOrNumber())
+    {
+        return query;
+    }
+
+    const auto prefix=text.mid(i,offset-i);
+    if (prefix.size()>MaxHashtagQueryChars)
+    {
+        return query;
+    }
+
+    query.isActive=true;
+    query.position=block.position()+hash;
+    query.prefix=prefix;
+    return query;
+}
+
+//--------------------------------------------------------------------------
+
+void EnhancedTextEdit::updateHashtagQuery()
+{
+    auto query=hashtagQueryAtCursor();
+
+    // A '#' dismissed with Escape stays dismissed while the caret is in that same word; a NEW one clears the latch.
+    if (query.isActive && query.position==m_dismissedHashtagPosition)
+    {
+        query=HashtagQuery{};
+    }
+    else
+    {
+        m_dismissedHashtagPosition=-1;
+    }
+
+    if (query.isActive==m_lastHashtagQuery.isActive
+        && query.position==m_lastHashtagQuery.position
+        && query.prefix==m_lastHashtagQuery.prefix)
+    {
+        return;
+    }
+
+    const auto wasActive=m_lastHashtagQuery.isActive;
+    m_lastHashtagQuery=query;
+
+    if (query.isActive)
+    {
+        emit hashtagQueryChanged(query.prefix,query.position);
+    }
+    else if (wasActive)
+    {
+        emit hashtagQueryClosed();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+bool EnhancedTextEdit::selectHashtagQueryAtCursor(QTextCursor& cursor) const
+{
+    const auto query=hashtagQueryAtCursor();
+    if (!query.isActive)
+    {
+        return false;
+    }
+
+    // From the '#' to the end of the word: what is after the caret in the same word goes with it
+    const auto block=document()->findBlock(query.position);
+    const auto text=block.text();
+    auto end=query.position-block.position()+1+query.prefix.size();
+    while (end<text.size() && isHashtagWordChar(text.at(end)))
+    {
+        ++end;
+    }
+    cursor.setPosition(query.position);
+    cursor.setPosition(block.position()+end,QTextCursor::KeepAnchor);
     return true;
 }
 
@@ -5332,6 +5478,19 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::mentionCompletionRequested,
         this,
         &AbstractMessageEditor::mentionCompletionRequested
+    );
+    // the same for the "#word" (hashtagQueryChanged()/hashtagQueryClosed())
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::hashtagQueryChanged,
+        this,
+        &AbstractMessageEditor::hashtagQueryChanged
+    );
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::hashtagQueryClosed,
+        this,
+        &AbstractMessageEditor::hashtagQueryClosed
     );
 
     // See EnhancedTextEdit::emojiShortcodeTyped()'s own doc comment -- this connection must be
@@ -7951,6 +8110,39 @@ void MessageEditor::insertMentionText(const QString& username, bool trailingSpac
     format.clearProperty(QTextFormat::AnchorName);
     cursor.insertText(text,format);
     if (trailingSpace && needsSpaceAfterMention(cursor))
+    {
+        cursor.insertText(QStringLiteral(" "),format);
+    }
+
+    pimpl->editor->setTextCursor(cursor);
+    pimpl->editor->setCurrentCharFormat(format);
+
+    finishFormatAction();
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::insertHashtagText(const QString& tag, bool trailingSpace)
+{
+    // Valid in EVERY MessageEditingMode: the payload is ordinary text, as typed.
+    const auto text=tag.startsWith(QLatin1Char('#')) ? tag : QLatin1Char('#')+tag;
+
+    auto cursor=pimpl->editor->textCursor();
+    if (!cursor.hasSelection())
+    {
+        pimpl->editor->selectHashtagQueryAtCursor(cursor);
+    }
+
+    // inserted with the anchor properties cleared off the inherited char format, so a tag typed right after a link is plain
+    auto format=cursor.charFormat();
+    format.clearProperty(QTextFormat::IsAnchor);
+    format.clearProperty(QTextFormat::AnchorHref);
+    format.clearProperty(QTextFormat::AnchorName);
+    cursor.insertText(text,format);
+
+    // The word went whole, so what follows is not a part of it: a space only where the line ends (a tag put into a sentence,
+    // before a comma or a space, needs none)
+    if (trailingSpace && cursor.atBlockEnd())
     {
         cursor.insertText(QStringLiteral(" "),format);
     }

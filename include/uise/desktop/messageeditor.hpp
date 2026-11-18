@@ -522,6 +522,38 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         bool selectMentionQueryAtCursor(QTextCursor& cursor) const;
 
         /**
+         * @brief The in-progress "#word" at the caret, if any: what hashtagQueryChanged() reports, exposed for a host to query
+         *  directly too. The counterpart of MentionQuery for a hashtag.
+         *
+         * A "#word" is a '#' that is NOT glued to a letter or a digit before it (a space, a bracket, another '#' or the
+         * start of the line before it), then letters, digits and underscores up to the caret. The same rule as the message
+         * search's recognizer of a hashtag (whitemclient search::findHashtags()), so what is offered is what is found. Nothing
+         * is reported inside a fenced code block, an inline code run (fixed pitch), an anchor or a table cell, or with a
+         * selection, or with detection off (setHashtagDetectionEnabled()).
+         *
+         * Recomputed from scratch on every call and emits nothing.
+         */
+        struct HashtagQuery
+        {
+            bool isActive=false;
+
+            //! Document position of the '#' itself. -1 when !isActive.
+            int position=-1;
+
+            //! Text after the '#', up to the caret. Empty right after '#' is typed.
+            QString prefix;
+        };
+
+        HashtagQuery hashtagQueryAtCursor() const;
+
+        /**
+         * @brief Extend `cursor`'s selection to cover the in-progress "#word", the '#' included, and the rest of the word after the caret
+         *  too, so that an insert REPLACES the tag as a whole.
+         * @return false, `cursor` left untouched, if there is no candidate at the caret.
+         */
+        bool selectHashtagQueryAtCursor(QTextCursor& cursor) const;
+
+        /**
          * @brief Widen `cursor`'s selection outward so no mention run is left only PARTLY
          *  covered by it.
          * @return true if the selection was actually changed.
@@ -660,6 +692,14 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
             m_mentionDetection=enable;
         }
 
+        //! On makes hashtagQueryAtCursor() report the "#word" at the caret, and hashtagQueryChanged()/hashtagQueryClosed() are
+        //! emitted. Default OFF: a host that has tags to suggest turns it on (the chat page does, for the composer and for the
+        //! comment of an attachment). Nothing about typing changes either way: it is pure observation, no key is taken for it.
+        void setHashtagDetectionEnabled(bool enable) noexcept
+        {
+            m_hashtagDetection=enable;
+        }
+
         /**
          * @brief Paste the clipboard's current content, image/file payloads included.
          *
@@ -755,6 +795,12 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! See AbstractMessageEditor::mentionCompletionRequested() -- relayed there verbatim.
         void mentionCompletionRequested(const QString& prefix, int position);
 
+        //! See AbstractMessageEditor::hashtagQueryChanged() -- relayed there verbatim.
+        void hashtagQueryChanged(const QString& prefix, int position);
+
+        //! See AbstractMessageEditor::hashtagQueryClosed().
+        void hashtagQueryClosed();
+
         /**
          * @brief The user just typed the CLOSING ':' of a ":name:" shortcode candidate, and the
          *  guard is offering MessageEditor a chance to replace it before the key is consumed.
@@ -847,6 +893,9 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! other, and recomputing from scratch makes running twice for one edit harmless.
         void updateMentionQuery();
 
+        //! The same for the caret's "#word": emits hashtagQueryChanged()/hashtagQueryClosed() only when it has changed.
+        void updateHashtagQuery();
+
         //! Connected to AbstractSpellChecker::dictionaryChanged(). Coalesces a burst of these
         //! (several dictionaries finishing within a few ms is several signals) into ONE
         //! rehighlight() via m_spellRehighlightTimer, which is O(document) and not worth paying
@@ -906,6 +955,7 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         bool m_newLineOnEnter;
         bool m_finishKeyRequiresControl=false;
         bool m_mentionDetection=true;
+        bool m_hashtagDetection=false;
         bool m_expanded=false;
         int m_maxHeight=DefaultMaxHeight;
         int m_maxHeightPercent=0;
@@ -957,6 +1007,10 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! the caret leaves that word, so typing on after Escape does not silently reopen the
         //! host's selector, while starting a NEW "@word" does.
         int m_dismissedMentionPosition=-1;
+
+        //! The same pair for the hashtag signals.
+        HashtagQuery m_lastHashtagQuery;
+        int m_dismissedHashtagPosition=-1;
 
         bool m_emojiShortcodeAutoReplaceEnabled=false;
 
@@ -1272,6 +1326,17 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
          * insertMention(). \p trailingSpace: see insertMention().
          */
         void insertMentionText(const QString& username, bool trailingSpace=false);
+
+        /**
+         * @brief Insert a hashtag as plain text at the caret, in place of the in-progress "#word" (the whole word, the part after the
+         *  caret too) or of the current explicit selection.
+         *
+         * Valid in EVERY MessageEditingMode: a tag is ordinary text, written exactly as a user types it, and the message search
+         * and the chat's bubbles recognize it from the text. The '#' is supplied here (and not doubled). Inserted with the anchor
+         * properties cleared off the inherited char format. \p trailingSpace: a space after it, when the tag ends its line, so that
+         * the user can go on typing.
+         */
+        void insertHashtagText(const QString& tag, bool trailingSpace=true);
 
         /**
          * @brief Insert an emoji at the caret -- see AbstractMessageEditor::insertEmoji() for the

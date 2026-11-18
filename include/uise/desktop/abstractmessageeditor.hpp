@@ -1101,6 +1101,26 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          */
         void mentionCompletionRequested(const QString& prefix, int position);
 
+        /**
+         * @brief The caret is inside a word that started with '#', and that word has just changed -- relayed verbatim from
+         *  EnhancedTextEdit::hashtagQueryChanged(), the counterpart of mentionQueryChanged() for a hashtag.
+         *
+         * Only while the text area has detection on (EnhancedTextEdit::setHashtagDetectionEnabled(), off by default). Emitted on every
+         * keystroke, paste, IME commit and undo/redo that changes the word or moves the caret within it, and once when the word first
+         * becomes a candidate; pure observation, no key is intercepted.
+         *
+         * @param prefix Text after the '#', up to the caret. Empty immediately after '#' is typed.
+         * @param position Document position of the '#' itself.
+         *
+         * Never emitted inside a fenced code block, an inline code run, an anchor or a table cell. See EnhancedTextEdit::HashtagQuery
+         * for the rule of a word.
+         */
+        void hashtagQueryChanged(const QString& prefix, int position);
+
+        //! The candidate "#word" the last hashtagQueryChanged() reported has stopped being one: a space typed, the caret moved out
+        //! of it, a selection made, Escape pressed. A host closes its list of tags on this.
+        void hashtagQueryClosed();
+
         //! See the spellCheckEnabled property.
         void spellCheckEnabledChanged(bool enabled);
 
