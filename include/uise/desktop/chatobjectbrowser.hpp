@@ -40,6 +40,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/framewithrefresh.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/chatobjectitem.hpp>
+#include <uise/desktop/lineeditcompletion.hpp>
 
 class QFrame;
 class QLabel;
@@ -354,6 +355,22 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
         }
 
         /**
+         * @brief Suggest words for the word being typed in the search line (LineEditCompletion).
+         *
+         * While the word under the caret starts with '#' ("#tr"), the callback is asked, after a short pause, for the
+         * candidates of it; they open as a list under the line. Up and Down choose, Enter and Tab pick the chosen one, a click
+         * picks too, and Escape closes the list and nothing else. A pick replaces the word, and the search runs at once
+         * with the new text. See LineEditCompletion for the whole contract. An empty callback removes the suggestions.
+         */
+        void setCompletionCb(LineEditCompletion::SourceCb cb);
+
+        //! The suggestions of the search line; null until setCompletionCb() is called.
+        LineEditCompletion* completion() const noexcept
+        {
+            return m_completion;
+        }
+
+        /**
          * @brief Ask for objects only while there is a search text (the "search results" kind).
          *
          * When on and the text is empty, reload() sends NO request and the browser shows its empty text (the hint, e.g.
@@ -552,6 +569,7 @@ class UISE_DESKTOP_EXPORT AbstractChatObjectBrowser : public FrameWithRefresh
         QFrame* m_searchBar;
         SearchLineEdit* m_searchEdit;
         QTimer* m_searchTimer;
+        LineEditCompletion* m_completion=nullptr;
         //! ChatObjectsPage::notice: a line under the search bar, hidden while empty.
         QLabel* m_noticeLabel;
         QLabel* m_emptyLabel;

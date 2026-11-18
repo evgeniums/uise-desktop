@@ -24,6 +24,7 @@ You may select, at your option, one of the above-listed licenses.
 /****************************************************************************/
 
 #include <algorithm>
+#include <utility>
 #include <iterator>
 
 #include <QFrame>
@@ -460,6 +461,31 @@ void AbstractChatObjectBrowser::setSearchText(const QString& text)
     m_searchEdit->setText(text);
     m_searchTimer->stop();
     applySearch();
+}
+
+//--------------------------------------------------------------------------
+
+void AbstractChatObjectBrowser::setCompletionCb(LineEditCompletion::SourceCb cb)
+{
+    if (m_completion==nullptr)
+    {
+        if (!cb)
+        {
+            return;
+        }
+
+        // the list is a child of the browser, under the line: over the results, not in the layout
+        m_completion=new LineEditCompletion(m_searchEdit,this);
+        connect(m_completion,&LineEditCompletion::accepted,this,
+            [this](const QString&)
+            {
+                // a pick is a decision: the search runs now, not after the typing pause
+                m_searchTimer->stop();
+                applySearch();
+            }
+        );
+    }
+    m_completion->setSource(std::move(cb));
 }
 
 //--------------------------------------------------------------------------

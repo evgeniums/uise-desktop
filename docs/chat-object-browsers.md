@@ -172,6 +172,7 @@ void setSearchVisible(bool);                  // the search line, hidden by defa
 void setSearchText(const QString&);           // as if typed, applied at once
 void setSearchPlaceholderText(const QString&);
 void focusSearch();
+void setCompletionCb(LineEditCompletion::SourceCb); // suggestions for the word under the caret that starts with '#'
 void setQueryRequired(bool);                  // no text, no request: the search kind, see "Query required"
 bool isQueryRequired() const;
 
@@ -251,6 +252,28 @@ The cancel button of the line (the cross at its right end) appears with the firs
 kind in a sidebar), where the owner closes the page when the line is cancelled. A cancel of an **empty** line then emits
 `SearchLineEdit::cancelled()` as well (a click on the button, or Escape while the line's own Escape shortcut is on), so a
 single click closes the page; with the default (off) a cancel of an empty line does nothing, as before.
+
+#### Suggestions for a word (`setCompletionCb()`)
+
+`setCompletionCb(cb)` gives the line a `LineEditCompletion` (`lineeditcompletion.hpp`, usable on any `QLineEdit`): while the word
+under the caret starts with `#` ("#tr": the `#` not glued to a letter or a digit before it, then letters, digits and `_`), the owner's
+`cb(word, answer)` is asked for the candidates, after a pause of 150 ms, and calls `answer(QStringList)` with them at once or later.
+They open as a list under the line, over the results, as wide as the line, **at most 10 rows**. The list never takes the focus:
+
+* Up and Down move the chosen row (wrapping around); **Enter** and **Tab** pick it; a click on a row picks it;
+* **Escape closes the list and nothing else sees it** (the filter that takes the keys is installed again on every opening, so it
+  runs before the ones installed earlier, and the `ShortcutOverride` of the key is accepted so that no shortcut fires), which is
+  what keeps a page that closes on Escape open; with the list closed the key is the page's again;
+* a pick replaces the **whole** word (the part after the caret too) with the candidate, adds a space when the word was at the
+  end of the text, puts the caret after it, and the browser searches **at once**, without the typing pause;
+* an answer that is not wanted any more is dropped: the word changed, the caret left it, the list was closed, a newer question
+  was asked. A caret that leaves the word, a text that no longer has one, and the line losing the focus close the list;
+* one candidate that is the typed word itself shows no list (the word is finished), so Enter keeps its meaning, a search.
+
+Candidates are given as they are to be inserted ("#travel"). An empty callback removes the suggestions.
+Style: the list is a `QListWidget` named `completionList` (`chatobjectbrowser.qss`: shape, `light/` and `dark/`: the colours of the
+chat page's "@" picker, `::item:selected`, `::item:hover`); it has **no padding of its own**, the code sizes it by the rows and
+the frame. Demo: the search kind of `demo/chatobjectbrowser`, "Suggestions of tags in the search line".
 
 #### What the owner tells about an answer
 
@@ -346,7 +369,7 @@ panel->setRegistry(std::move(registry));
 ## 6. Styling and strings
 
 * Styles are in `style/chatobjectbrowser.qss` with colours in `light/` and `dark/`. Object names:
-  `searchBar` (padding around the line: the line itself must have **no margin**, `LineEdit` puts its icons by the whole rect of the widget), `searchEdit`, `monthHeader` (above a list row, and a heading row `monthRow` of the grid), `emptyLabel`, `linkRow`, `mentionRow`, `searchRow`, `rowIcon`, `rowAvatar`, `textColumn`, `title`, `url`,
+  `searchBar` (padding around the line: the line itself must have **no margin**, `LineEdit` puts its icons by the whole rect of the widget), `searchEdit`, `completionList` (the suggestions of the line), `monthHeader` (above a list row, and a heading row `monthRow` of the grid), `emptyLabel`, `linkRow`, `mentionRow`, `searchRow`, `rowIcon`, `rowAvatar`, `textColumn`, `title`, `url`,
   `snippet` (an `ElidedLabel` in a mention row, a `ChatObjectSearchSnippet` in a search row), `meta`, `galleryRow`, `galleryCell` (its background is the **placeholder** shown until
   a thumbnail resolves), `galleryImage`; panel: `header`, `backButton`, `title`, `body`,
   `unknownLabel`. Reused tints only: the chat file row's hover, the reaction chip's tint.

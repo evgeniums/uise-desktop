@@ -8,6 +8,7 @@ SET (SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/testchatobjectmodel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testchatobjectbrowser.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/testchatobjectsearch.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/testlineeditcompletion.cpp
 )
 
 INCLUDE (../inc/test.inc.cmake)

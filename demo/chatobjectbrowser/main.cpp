@@ -87,6 +87,22 @@ You may select, at your option, one of the above-listed licenses.
 *  answer to "rep" arrives: only the result of "repo" is shown (the stale answer is dropped).
 *  Click a row: the log shows "go to message" with the id of the message. Right click: the menu has "Go to message" and the
 *  demo's own entry.
+*
+*  Suggestions of tags in the search line (the "search" kind)
+*  -----------------------------------------------------------
+*  The demo gives the search line a source of tags: #travel, #travels, #travelblog, #trip, #report, #reports, #идея, #идеи. Type:
+*   "#"              a list opens under the line with the first tags (alphabetical), after a pause of about 150 ms.
+*   "#tr"            #travel, #travelblog, #travels, #trip. Keep typing: "#trav" narrows it, the list follows the text.
+*   Down, Up         move the chosen row (wrapping around). Enter or Tab picks it: the word is replaced, a space follows, the search
+*                    runs AT ONCE (the log shows a request without the half second pause) and the list is gone.
+*   a click on a row picks it the same way, and the cursor stays in the line.
+*   Escape           closes the list and does nothing else. With the list closed, Escape is the window's again.
+*   "#travels"       typed in full: no list (the one candidate is the word itself), Enter just searches.
+*   "abc#tr"         no list: the "#" is glued to a letter. "see #tr" has one.
+*   "#и"             the Russian tags: #идея, #идеи.
+*   Move the cursor out of the word with Left, or click elsewhere in the line: the list closes. Click outside the line: it closes.
+*  The log shows "suggestions for ..." for every question the line asks; with "Answer in 2000 ms" the source answers late: type
+*  "#tr" and then "a" before the answer to "#tr" comes: only the answer to "#tra" is shown.
 *  Switch "Dark theme" on and off to see the highlight colours of both themes. "Group by month" and "Show the search line"
 *  do not apply to this kind: it has no month headings and always has its own search line.
 *
@@ -1049,7 +1065,7 @@ int main(int argc, char *argv[])
 
     // --- the controls ---
 
-    auto openKind=[&owner,panel,kindBox,thumbBox,groupBox,searchBox,stopPlayer,logMsg](const ChatObjectKey& anchor)
+    auto openKind=[&owner,panel,kindBox,thumbBox,groupBox,searchBox,delayBox,stopPlayer,logMsg](const ChatObjectKey& anchor)
     {
         stopPlayer();
         owner.thumbnails->setDelayMs(thumbBox->currentData().toInt());
@@ -1062,6 +1078,33 @@ int main(int argc, char *argv[])
             {
                 // its search line and its (missing) month headings are the kind's own; the options are for the others
                 browser->focusSearch();
+
+                // the tags of the search line, answered after the delay of the demo like a request is
+                browser->setCompletionCb(
+                    [delayBox,logMsg](const QString& word, LineEditCompletion::AnswerCb answer)
+                    {
+                        logMsg(QStringLiteral("suggestions for '%1'").arg(word));
+                        static const QStringList tags{
+                            QStringLiteral("#idea"),QStringLiteral("#ideas"),QStringLiteral("#report"),QStringLiteral("#reports"),
+                            QStringLiteral("#travel"),QStringLiteral("#travelblog"),QStringLiteral("#travels"),QStringLiteral("#trip"),
+                            QStringLiteral("#идея"),QStringLiteral("#идеи")
+                        };
+                        QStringList found;
+                        for (const auto& tag : tags)
+                        {
+                            if (tag.startsWith(word,Qt::CaseInsensitive))
+                            {
+                                found.push_back(tag);
+                            }
+                        }
+                        QTimer::singleShot(delayBox->currentData().toInt(),
+                            [answer,found]()
+                            {
+                                answer(found);
+                            }
+                        );
+                    }
+                );
             }
             else
             {

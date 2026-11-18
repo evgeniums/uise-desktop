@@ -25,6 +25,21 @@ qproperty-highlightColor: #0A66C2;
 qproperty-highlightBackground: rgba(10,102,194,28);
 }
 
+/* the suggestions of the search line, see chatobjectbrowser.qss; the colours of the "@" picker of the chat page */
+uise--AbstractChatObjectBrowser #completionList {
+background-color: #ffffff;
+border: 1px solid #c9d3da;
+}
+
+uise--AbstractChatObjectBrowser #completionList::item:selected {
+background-color: #e3edf3;
+color: #000000;
+}
+
+uise--AbstractChatObjectBrowser #completionList::item:hover {
+background-color: rgba(0,0,0,6);
+}
+
 uise--ChatObjectListBrowser #linkRow {
 border-bottom:1px solid #DCDCDC;
 }

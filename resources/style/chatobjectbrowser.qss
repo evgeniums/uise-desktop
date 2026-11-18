@@ -40,6 +40,18 @@ padding-top:6px;
 padding-bottom:6px;
 }
 
+/* The suggestions of the search line (LineEditCompletion): a list that floats over the results, under the line, as wide as it.
+   No padding on the list itself: its height is the rows' and the frame's, which the code measures. Colours in light/ and dark/. */
+uise--AbstractChatObjectBrowser #completionList {
+border-radius:8px;
+outline:none;
+}
+
+uise--AbstractChatObjectBrowser #completionList::item {
+padding:5px 10px;
+border-radius:6px;
+}
+
 /* --- month headings: above the first object of a month --- */
 
 uise--ChatObjectListBrowser #monthHeader {
