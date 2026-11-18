@@ -62,3 +62,29 @@ background-color: #DCE8F5;
 uise--MessageEditor #micButton[checked="true"] {
 background-color: #b3d1f0;
 }
+
+/* enter-hint strip: the same pale blue as a checked toolbar button, so it reads as a hint rather
+   than a warning. The two actions use the composer's link colour (EnhancedTextEdit::linkColor
+   at the top of this file), so they read as links; the X is neutral grey. */
+uise--MessageEditor #enterHintStrip {
+background-color: #DCE8F5;
+border-top-color: #DDDDDD;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintText {
+color: #333333;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintSendButton QPushButton,
+uise--MessageEditor #enterHintStrip #enterHintAlwaysButton QPushButton {
+color: #1A6FD4;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintCloseButton QPushButton {
+background-color: transparent;
+color: #555555;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintCloseButton QPushButton:hover {
+background-color: #C9DDF0;
+}

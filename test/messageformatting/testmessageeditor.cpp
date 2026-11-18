@@ -72,6 +72,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/messageeditor.hpp>
 #include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/icontextbutton.hpp>
+#include <uise/desktop/pushbutton.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/hyperlinkdialog.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
@@ -2340,6 +2341,270 @@ BOOST_AUTO_TEST_CASE(TestSetFinishOnEnterWhileExpandedTakesEffectOnCollapse)
             editor.setExpanded(false);
             UISE_TEST_CHECK(editor.effectiveFinishOnEnter());
             UISE_TEST_CHECK(!editor.textEdit()->isNewLineOnEnter());
+        }
+    );
+}
+
+namespace {
+
+//! One Return key press into the editor's text edit, with the given modifiers.
+void pressReturn(MessageEditor& editor, Qt::KeyboardModifiers modifiers=Qt::NoModifier)
+{
+    QKeyEvent event(QEvent::KeyPress,Qt::Key_Return,modifiers,QStringLiteral("\r"));
+    QApplication::sendEvent(editor.textEdit(),&event);
+}
+
+QFrame* enterHintStrip(MessageEditor& editor)
+{
+    auto* strip=editor.findChild<QFrame*>("enterHintStrip");
+    UISE_TEST_REQUIRE(strip!=nullptr);
+    return strip;
+}
+
+} // anonymous namespace
+
+BOOST_AUTO_TEST_CASE(TestEnterHintOffByDefaultKeepsExpandedShiftEnterSending)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            UISE_TEST_CHECK(!editor.isEnterHintEnabled());
+            UISE_TEST_CHECK(!editor.isFinishOnEnterWhenExpanded());
+            editor.setExpanded(true);
+
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+
+            // Unchanged behaviour for a host that did not opt in: Enter is a line break and
+            // Shift+Enter still sends while expanded, and no strip ever appears.
+            pressReturn(editor);
+            UISE_TEST_CHECK_EQUAL(finished.count(),0);
+            pressReturn(editor,Qt::ShiftModifier);
+            UISE_TEST_CHECK_EQUAL(finished.count(),1);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEnterHintExpandedNoKeySendsAndStripAppears)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            editor.setExpanded(true);
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+
+            // Built hidden: nothing to explain until a key has actually been swallowed.
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            pressReturn(editor);
+            UISE_TEST_CHECK(enterHintStrip(editor)->isVisibleTo(&editor));
+            pressReturn(editor,Qt::ShiftModifier);
+            pressReturn(editor,Qt::ControlModifier);
+
+            // All three became line breaks and none sent.
+            UISE_TEST_CHECK_EQUAL(finished.count(),0);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),4);
+            UISE_TEST_CHECK(enterHintStrip(editor)->isVisibleTo(&editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEnterHintNeverShownWhileCollapsed)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+
+            // Collapsed: ordinary rule, Enter sends and nothing is explained.
+            pressReturn(editor);
+            UISE_TEST_CHECK_EQUAL(finished.count(),1);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEnterHintCollapseHidesStripAndNextExpandStartsHidden)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            editor.setExpanded(true);
+            pressReturn(editor);
+            UISE_TEST_REQUIRE(enterHintStrip(editor)->isVisibleTo(&editor));
+
+            editor.setExpanded(false);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            // A new formatting session: hidden until the first swallowed key again.
+            editor.setExpanded(true);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+            pressReturn(editor);
+            UISE_TEST_CHECK(enterHintStrip(editor)->isVisibleTo(&editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestFinishOnEnterWhenExpandedMakesExpandedBehaveLikeCollapsed)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            editor.setExpanded(true);
+            pressReturn(editor);
+            UISE_TEST_REQUIRE(enterHintStrip(editor)->isVisibleTo(&editor));
+
+            QSignalSpy changed(&editor,&AbstractMessageEditor::finishOnEnterWhenExpandedChanged);
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+
+            editor.setFinishOnEnterWhenExpanded(true);
+            editor.setFinishOnEnterWhenExpanded(true);
+            UISE_TEST_CHECK_EQUAL(changed.count(),1);
+            UISE_TEST_CHECK(editor.effectiveFinishOnEnter());
+            // The strip goes with the mode and is never shown again.
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            const auto blocks=editor.textEdit()->document()->blockCount();
+            pressReturn(editor,Qt::ShiftModifier);
+            UISE_TEST_CHECK_EQUAL(finished.count(),0);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),blocks+1);
+
+            pressReturn(editor);
+            UISE_TEST_CHECK_EQUAL(finished.count(),1);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            // Turned off again (the user unticks the setting): the hint is back.
+            editor.setFinishOnEnterWhenExpanded(false);
+            UISE_TEST_CHECK_EQUAL(changed.count(),2);
+            pressReturn(editor);
+            UISE_TEST_CHECK_EQUAL(finished.count(),1);
+            UISE_TEST_CHECK(enterHintStrip(editor)->isVisibleTo(&editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEnterHintButtons)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            editor.setExpanded(true);
+
+            auto* sendButton=editor.findChild<PushButton*>("enterHintSendButton");
+            auto* alwaysButton=editor.findChild<PushButton*>("enterHintAlwaysButton");
+            UISE_TEST_REQUIRE(sendButton!=nullptr);
+            UISE_TEST_REQUIRE(alwaysButton!=nullptr);
+            // Neither may take the caret/selection away from the text edit.
+            UISE_TEST_CHECK(sendButton->qPushButton()->focusPolicy()==Qt::NoFocus);
+            UISE_TEST_CHECK(alwaysButton->qPushButton()->focusPolicy()==Qt::NoFocus);
+
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+            QSignalSpy changed(&editor,&AbstractMessageEditor::finishOnEnterWhenExpandedChanged);
+            QSignalSpy sendNow(&editor,&AbstractMessageEditor::enterHintSendNowClicked);
+
+            pressReturn(editor);
+            UISE_TEST_REQUIRE(enterHintStrip(editor)->isVisibleTo(&editor));
+            sendButton->click();
+            UISE_TEST_CHECK_EQUAL(sendNow.count(),1);
+            UISE_TEST_CHECK_EQUAL(finished.count(),1);
+            UISE_TEST_CHECK_EQUAL(changed.count(),0);
+            UISE_TEST_CHECK(!editor.isFinishOnEnterWhenExpanded());
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            pressReturn(editor);
+            UISE_TEST_REQUIRE(enterHintStrip(editor)->isVisibleTo(&editor));
+            alwaysButton->click();
+            UISE_TEST_CHECK(editor.isFinishOnEnterWhenExpanded());
+            UISE_TEST_CHECK_EQUAL(changed.count(),1);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEnterHintCloseButtonClosesForTheSessionOnly)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            editor.setExpanded(true);
+
+            auto* closeButton=editor.findChild<PushButton*>("enterHintCloseButton");
+            UISE_TEST_REQUIRE(closeButton!=nullptr);
+            UISE_TEST_CHECK(closeButton->qPushButton()->focusPolicy()==Qt::NoFocus);
+
+            QSignalSpy closed(&editor,&AbstractMessageEditor::enterHintClosed);
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+
+            pressReturn(editor);
+            UISE_TEST_REQUIRE(enterHintStrip(editor)->isVisibleTo(&editor));
+            closeButton->click();
+            UISE_TEST_CHECK_EQUAL(closed.count(),1);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            // Closed for the rest of this formatting session: the next Enter is a plain line
+            // break, it neither sends nor brings the strip back, and nothing more is reported.
+            const auto blocks=editor.textEdit()->document()->blockCount();
+            pressReturn(editor);
+            pressReturn(editor,Qt::ShiftModifier);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+            UISE_TEST_CHECK_EQUAL(finished.count(),0);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),blocks+2);
+            UISE_TEST_CHECK_EQUAL(closed.count(),1);
+
+            // A new formatting session shows it again.
+            editor.setExpanded(false);
+            editor.setExpanded(true);
+            pressReturn(editor);
+            UISE_TEST_CHECK(enterHintStrip(editor)->isVisibleTo(&editor));
+            closeButton->click();
+            UISE_TEST_CHECK_EQUAL(closed.count(),2);
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(TestEnterHintStripSuppressedKeepsNoKeySendsButNeverShowsStrip)
+{
+    TestThread::instance()->execGuiThread(
+        [&]()
+        {
+            MessageEditor editor;
+            editor.setEnterHintEnabled(true);
+            editor.setExpanded(true);
+            QSignalSpy finished(&editor,&AbstractMessageEditor::editingFinished);
+
+            pressReturn(editor);
+            UISE_TEST_REQUIRE(enterHintStrip(editor)->isVisibleTo(&editor));
+
+            // Turning it on takes a showing strip down at once.
+            editor.setEnterHintStripSuppressed(true);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            // Still the enter-hint mode otherwise: no key sends, every Enter is a line break.
+            const auto blocks=editor.textEdit()->document()->blockCount();
+            pressReturn(editor);
+            pressReturn(editor,Qt::ShiftModifier);
+            pressReturn(editor,Qt::ControlModifier);
+            UISE_TEST_CHECK_EQUAL(finished.count(),0);
+            UISE_TEST_CHECK_EQUAL(editor.textEdit()->document()->blockCount(),blocks+3);
+            UISE_TEST_CHECK(!enterHintStrip(editor)->isVisibleTo(&editor));
+
+            // Switched back on, the strip works again.
+            editor.setEnterHintStripSuppressed(false);
+            pressReturn(editor);
+            UISE_TEST_CHECK(enterHintStrip(editor)->isVisibleTo(&editor));
         }
     );
 }

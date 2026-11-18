@@ -612,7 +612,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+5"/>
-        <location filename="../src/chatobjectrows.cpp" line="+1094"/>
+        <location filename="../src/chatobjectrows.cpp" line="+1101"/>
         <source>Type to search messages</source>
         <translation type="unfinished"></translation>
     </message>
@@ -622,7 +622,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../src/chatobjectrows.cpp" line="-1017"/>
+        <location filename="../src/chatobjectrows.cpp" line="-1024"/>
         <source>%1, %2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -647,7 +647,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+236"/>
+        <location line="+243"/>
         <source>Search bookmarks</source>
         <translation type="unfinished"></translation>
     </message>
@@ -661,8 +661,8 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="obsolete">%1 · %2</translation>
     </message>
     <message>
-        <location filename="../src/chatobjectbrowser.cpp" line="+946"/>
-        <location filename="../src/chatobjectrows.cpp" line="-262"/>
+        <location filename="../src/chatobjectbrowser.cpp" line="+972"/>
+        <location filename="../src/chatobjectrows.cpp" line="-269"/>
         <location line="+15"/>
         <source>Go to message</source>
         <translation type="unfinished">Go to message</translation>
@@ -2814,7 +2814,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatMessagesView</name>
     <message>
-        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+184"/>
+        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+188"/>
         <source>Unread messages</source>
         <translation>Unread messages</translation>
     </message>
@@ -2822,13 +2822,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatObjectBrowser</name>
     <message>
-        <location filename="../src/chatobjectbrowser.cpp" line="-630"/>
+        <location filename="../src/chatobjectbrowser.cpp" line="-655"/>
         <source>Nothing here yet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+11"/>
-        <location line="+162"/>
+        <location line="+187"/>
         <source>Search</source>
         <translation type="unfinished">Search</translation>
     </message>
@@ -3157,7 +3157,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2325"/>
+        <location filename="../src/chatmessage.cpp" line="+2534"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>
@@ -3783,7 +3783,27 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::MessageEditor</name>
     <message>
-        <location filename="../src/messageeditor.cpp" line="+4961"/>
+        <location filename="../src/messageeditor.cpp" line="+5100"/>
+        <source>In formatting mode Enter inserts a new line. To send the message, click Send.</source>
+        <translation>In formatting mode Enter inserts a new line. To send the message, click Send.</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Send now</source>
+        <translation>Send now</translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Always send on Enter</source>
+        <translation>Always send on Enter</translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Close</source>
+        <translation>Close</translation>
+    </message>
+    <message>
+        <location line="+47"/>
         <source>Show formatting toolbar</source>
         <translation>Show formatting toolbar</translation>
     </message>
@@ -3793,12 +3813,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished">Insert emoji</translation>
     </message>
     <message>
-        <location line="+1745"/>
+        <location line="+1845"/>
         <source>code here</source>
         <translation>code here</translation>
     </message>
     <message>
-        <location line="+3036"/>
+        <location line="+3075"/>
         <source>No suggestions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3943,7 +3963,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Clear</translation>
     </message>
     <message>
-        <location line="-4924"/>
+        <location line="-5063"/>
         <source>Hold to record a voice message</source>
         <translation>Hold to record a voice message</translation>
     </message>

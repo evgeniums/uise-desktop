@@ -77,6 +77,8 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/style.hpp>
 #include <uise/desktop/dropdownmenu.hpp>
 #include <uise/desktop/icontextbutton.hpp>
+#include <uise/desktop/pushbutton.hpp>
+#include <uise/desktop/label.hpp>
 #include <uise/desktop/messageeditortoolbar.hpp>
 #include <uise/desktop/markdownrenderer.hpp>
 #include <uise/desktop/abstractspellchecker.hpp>
@@ -3407,6 +3409,13 @@ void EnhancedTextEdit::keyPressEvent(QKeyEvent* event)
             emit returnPressed();
             return;
         }
+        if (m_noFinishKey)
+        {
+            // Enter-hint mode: nothing sends from the keyboard, so tell the owner this press was
+            // swallowed as a line break (it shows the hint strip), then fall through to the
+            // ordinary line-break handling below.
+            emit lineBreakInsteadOfFinish();
+        }
         event->setModifiers(event->modifiers() & ~(Qt::ControlModifier | Qt::ShiftModifier));
     }
 
@@ -4884,6 +4893,21 @@ class MessageEditor_p
         QBoxLayout* trailingLayout;
 
         MessageEditorToolbar* toolbar;
+
+        //! The enter-hint strip, directly below the toolbar (layout index 1, above editorRow):
+        //! built hidden and shown by the first Return/Enter that became a line break while the
+        //! enter hint is active -- see setupReturnPressed(), which is also what hides it again.
+        QFrame* enterHintStrip=nullptr;
+        Label* enterHintText=nullptr;
+        PushButton* enterHintSendButton=nullptr;
+        PushButton* enterHintAlwaysButton=nullptr;
+        PushButton* enterHintCloseButton=nullptr;
+
+        //! The user closed the strip with its X in the current formatting session: it stays closed
+        //! (further Enters are plain line breaks) until the hint mode ends -- collapse, "Always",
+        //! the hint being turned off -- which is what setupReturnPressed() resets this on.
+        bool enterHintClosedByUser=false;
+
         EnhancedTextEdit* editor;
         IconTextButton* expandButton;
 
@@ -5061,6 +5085,47 @@ MessageEditor::MessageEditor(QWidget* parent)
     pimpl->toolbar=new MessageEditorToolbar(this);
     pimpl->toolbar->setVisible(false);
     pimpl->layout->addWidget(pimpl->toolbar);
+
+    // --- enter-hint strip: directly below the toolbar, built hidden like the toolbar so a host
+    // that never opts in (enterHintEnabled) pays nothing for it. NoFocus on both buttons, same
+    // rule as every other button around the text edit: a click must not pull the caret or the
+    // selection out of it.
+    pimpl->enterHintStrip=new QFrame(this);
+    pimpl->enterHintStrip->setObjectName("enterHintStrip");
+    pimpl->enterHintStrip->setVisible(false);
+    {
+        auto stripLayout=Layout::horizontal(pimpl->enterHintStrip);
+
+        pimpl->enterHintText=new Label(
+            tr("In formatting mode Enter inserts a new line. To send the message, click Send."),
+            pimpl->enterHintStrip);
+        pimpl->enterHintText->setObjectName("enterHintText");
+        pimpl->enterHintText->setWordWrap(true);
+        stripLayout->addWidget(pimpl->enterHintText,1);
+
+        pimpl->enterHintSendButton=new PushButton(tr("Send now"),pimpl->enterHintStrip);
+        pimpl->enterHintSendButton->setObjectName("enterHintSendButton");
+        pimpl->enterHintSendButton->qPushButton()->setFocusPolicy(Qt::NoFocus);
+        pimpl->enterHintSendButton->setCursor(Qt::PointingHandCursor);
+        stripLayout->addWidget(pimpl->enterHintSendButton,0,Qt::AlignVCenter);
+
+        pimpl->enterHintAlwaysButton=new PushButton(tr("Always send on Enter"),pimpl->enterHintStrip);
+        pimpl->enterHintAlwaysButton->setObjectName("enterHintAlwaysButton");
+        pimpl->enterHintAlwaysButton->qPushButton()->setFocusPolicy(Qt::NoFocus);
+        pimpl->enterHintAlwaysButton->setCursor(Qt::PointingHandCursor);
+        stripLayout->addWidget(pimpl->enterHintAlwaysButton,0,Qt::AlignVCenter);
+
+        // The close "X", in the top-right corner (top-aligned, so it stays there if the text
+        // wraps). A plain multiplication sign rather than an icon: it needs no icon-context json
+        // and tints with the text colour in both themes.
+        pimpl->enterHintCloseButton=new PushButton(QString(QChar(0x00D7)),pimpl->enterHintStrip);
+        pimpl->enterHintCloseButton->setObjectName("enterHintCloseButton");
+        pimpl->enterHintCloseButton->qPushButton()->setFocusPolicy(Qt::NoFocus);
+        pimpl->enterHintCloseButton->setCursor(Qt::PointingHandCursor);
+        pimpl->enterHintCloseButton->setToolTip(tr("Close"));
+        stripLayout->addWidget(pimpl->enterHintCloseButton,0,Qt::AlignTop);
+    }
+    pimpl->layout->addWidget(pimpl->enterHintStrip);
 
     // --- editor row: the expand button sits BESIDE the text edit, on its left, not on a row of
     // its own below it -- an own row would push the text edit up by the button's full height for
@@ -5410,6 +5475,57 @@ MessageEditor::MessageEditor(QWidget* parent)
         &EnhancedTextEdit::returnPressed,
         this,
         &AbstractMessageEditor::finishEditing
+    );
+
+    // Enter-hint strip. The text edit only emits lineBreakInsteadOfFinish() while
+    // setupReturnPressed() has put it in no-finish mode, so no extra guard is needed here beyond
+    // not re-showing an already visible strip.
+    connect(
+        pimpl->editor,
+        &EnhancedTextEdit::lineBreakInsteadOfFinish,
+        this,
+        [this]()
+        {
+            showEnterHint();
+        }
+    );
+    connect(
+        pimpl->enterHintSendButton,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            // Hidden first: finishEditing() lets the host collapse the editor, and a rejected send
+            // (e.g. nothing to send) leaves it expanded -- the next Enter shows the strip again.
+            pimpl->enterHintStrip->setVisible(false);
+            activateUpwardIfVisible(this);
+            emit enterHintSendNowClicked();
+            finishEditing();
+        }
+    );
+    connect(
+        pimpl->enterHintAlwaysButton,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            // Hides the strip itself, through updateFinishOnEnter() -> setupReturnPressed().
+            setFinishOnEnterWhenExpanded(true);
+        }
+    );
+    connect(
+        pimpl->enterHintCloseButton,
+        &PushButton::clicked,
+        this,
+        [this]()
+        {
+            // Closed for the rest of this formatting session, so the very next Enter does not
+            // bring it straight back; the host counts the closes (enterHintClosed()).
+            pimpl->enterHintClosedByUser=true;
+            pimpl->enterHintStrip->setVisible(false);
+            activateUpwardIfVisible(this);
+            emit enterHintClosed();
+        }
     );
 
     connect(
@@ -6440,6 +6556,42 @@ void MessageEditor::setupReturnPressed()
     // the answer.
     // A pinned editor is a document, not a message: Enter is never "send".
     pimpl->editor->setNewLineOnEnter(pimpl->toolbarPinned || !effectiveFinishOnEnter());
+
+    // Enter-hint mode: nothing sends from the keyboard while the hint is in force, and the strip
+    // is the explanation. Leaving the mode for any reason (collapse, the user's "always send on
+    // Enter", the host turning the hint off, a pinned toolbar) is exactly when the strip must go,
+    // so this is the one place that hides it.
+    const auto hint=!pimpl->toolbarPinned && isEnterHintActive();
+    pimpl->editor->setNoFinishKey(hint);
+    if (!hint)
+    {
+        // A new formatting session may show the strip again after the user closed it.
+        pimpl->enterHintClosedByUser=false;
+    }
+    // A suppressed strip never shows, but the no-finish-key mode above stays in force.
+    if ((!hint || isEnterHintStripSuppressed()) && pimpl->enterHintStrip!=nullptr
+        && pimpl->enterHintStrip->isVisibleTo(this))
+    {
+        pimpl->enterHintStrip->setVisible(false);
+        activateUpwardIfVisible(this);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void MessageEditor::showEnterHint()
+{
+    if (pimpl->toolbarPinned || !isEnterHintActive() || isEnterHintStripSuppressed()
+        || pimpl->enterHintClosedByUser)
+    {
+        return;
+    }
+    if (pimpl->enterHintStrip->isVisibleTo(this))
+    {
+        return;
+    }
+    pimpl->enterHintStrip->setVisible(true);
+    activateUpwardIfVisible(this);
 }
 
 //--------------------------------------------------------------------------
@@ -8819,6 +8971,12 @@ void MessageEditor::onEmojiGalleryReturnPressed(Qt::KeyboardModifiers modifiers)
     // to insert it into, so there is nothing to do.
     if (!pimpl->editor->isFinishKey(modifiers))
     {
+        // Enter-hint mode: the picker cannot take a line break, but the user still pressed Enter
+        // expecting something, so explain why nothing was sent.
+        if (pimpl->editor->isNoFinishKey())
+        {
+            showEnterHint();
+        }
         return;
     }
     // User-initiated, same as Escape: closes the picker and clears any pin rather than leaving

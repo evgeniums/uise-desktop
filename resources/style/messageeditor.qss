@@ -175,3 +175,64 @@ margin: 0 4px 2px 0;
 uise--MessageEditor #micButton {
 border-radius: 6px;
 }
+
+/* The enter-hint strip, directly below the formatting toolbar: shown by the first Enter that
+   became a line break while the hint is in force (AbstractMessageEditor::enterHintEnabled).
+   Layout only here; the colours are in light/dark messageeditor.qss.
+
+   Quiet by design -- it is a hint, not a dialog: the two actions are plain text in the link
+   colour (underlined on hover, like the calendar's link buttons) instead of filled buttons, so
+   the strip stays one thin line, and the close "X" is a small square tucked into the top-right
+   corner. Left and right gaps match: the text starts 8px from the left edge, and the X's glyph
+   ends about 8px from the right one (4px strip padding + the 18px square's own side space).
+   The buttons are PushButtons, which wrap a QPushButton -- hence the QPushButton selectors. */
+uise--MessageEditor #enterHintStrip {
+padding: 4px 4px 4px 8px;
+border-top: 1px solid transparent;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintText {
+padding-right: 12px;
+}
+
+/* the two text actions: no box at all, a gap between them instead */
+uise--MessageEditor #enterHintStrip #enterHintSendButton,
+uise--MessageEditor #enterHintStrip #enterHintAlwaysButton {
+margin-left: 14px;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintSendButton QPushButton,
+uise--MessageEditor #enterHintStrip #enterHintAlwaysButton QPushButton {
+background: transparent;
+border: none;
+padding: 0;
+min-width: 0;
+min-height: 0;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintSendButton QPushButton:hover,
+uise--MessageEditor #enterHintStrip #enterHintAlwaysButton QPushButton:hover {
+text-decoration: underline;
+}
+
+/* "Send now" is the main action, so it is bold; "Always send on Enter" stays regular */
+uise--MessageEditor #enterHintStrip #enterHintSendButton QPushButton {
+font-weight: bold;
+}
+
+/* the close "X": a fixed small square, top-right, so it neither stretches the strip nor drifts
+   when the text wraps onto a second line */
+uise--MessageEditor #enterHintStrip #enterHintCloseButton {
+margin-left: 6px;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintCloseButton QPushButton {
+padding: 0;
+border: none;
+border-radius: 9px;
+font-size: 16px;
+min-width: 18px;
+max-width: 18px;
+min-height: 18px;
+max-height: 18px;
+}

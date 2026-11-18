@@ -671,11 +671,29 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         //! picker) can apply an identical rule to a Return pressed while IT has focus.
         bool isFinishKey(Qt::KeyboardModifiers modifiers) const noexcept
         {
+            if (m_noFinishKey)
+            {
+                return false;
+            }
+
             // A document editor has no "send" gesture a stray Shift can trigger: only Ctrl (Cmd on
             // macOS) finishes, and Shift+Enter is an ordinary line break again.
             const auto mask=m_finishKeyRequiresControl ? Qt::ControlModifier : (Qt::ControlModifier | Qt::ShiftModifier);
             const auto ctrlOrShift=static_cast<bool>(modifiers & mask);
             return m_newLineOnEnter ? ctrlOrShift : !ctrlOrShift;
+        }
+
+        //! On makes isFinishKey() false for EVERY modifier combination: no key sends, and each
+        //! Return/Enter emits lineBreakInsteadOfFinish() and then inserts a line break. Driven by
+        //! MessageEditor::setupReturnPressed() for the enter-hint mode. Default false.
+        void setNoFinishKey(bool enable) noexcept
+        {
+            m_noFinishKey=enable;
+        }
+
+        bool isNoFinishKey() const noexcept
+        {
+            return m_noFinishKey;
         }
 
         //! See MessageEditor::setToolbarPinned(), which is the only caller. Default false.
@@ -733,6 +751,11 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
     signals:
 
         void returnPressed();
+
+        //! A Return/Enter was typed while setNoFinishKey() is on, so it became a line break
+        //! instead of finishing. MessageEditor shows its enter-hint strip on this.
+        void lineBreakInsteadOfFinish();
+
         void activated();
 
         /**
@@ -954,6 +977,7 @@ class UISE_DESKTOP_EXPORT EnhancedTextEdit : public QTextEdit
         bool m_autoResize;
         bool m_newLineOnEnter;
         bool m_finishKeyRequiresControl=false;
+        bool m_noFinishKey=false;
         bool m_mentionDetection=true;
         bool m_hashtagDetection=false;
         bool m_expanded=false;
@@ -1552,6 +1576,10 @@ class UISE_DESKTOP_EXPORT MessageEditor : public AbstractMessageEditor
     private:
 
         void setupReturnPressed();
+
+        //! Shows the enter-hint strip if the hint is in force (and it is not already showing).
+        //! Hiding it is setupReturnPressed()'s job.
+        void showEnterHint();
 
         /**
          * @brief Push the host's placeholder into the text edit, or suppress it.

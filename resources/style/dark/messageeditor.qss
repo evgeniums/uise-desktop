@@ -63,3 +63,27 @@ background-color: #1E3A5C;
 uise--MessageEditor #micButton[checked="true"] {
 background-color: #3a6ea5;
 }
+
+/* enter-hint strip: see light/messageeditor.qss */
+uise--MessageEditor #enterHintStrip {
+background-color: #1E3A5C;
+border-top-color: #444444;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintText {
+color: #DDDDDD;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintSendButton QPushButton,
+uise--MessageEditor #enterHintStrip #enterHintAlwaysButton QPushButton {
+color: #7FB3F0;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintCloseButton QPushButton {
+background-color: transparent;
+color: #BBBBBB;
+}
+
+uise--MessageEditor #enterHintStrip #enterHintCloseButton QPushButton:hover {
+background-color: #2A4D78;
+}

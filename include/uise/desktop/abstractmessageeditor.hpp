@@ -283,6 +283,26 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
     //! call. The user's own toggle then turns it off from there.
     Q_PROPERTY(bool spellCheckEnabled READ isSpellCheckEnabled WRITE setSpellCheckEnabled NOTIFY spellCheckEnabledChanged)
 
+    //! Does a bare Enter still finish editing ("send") while the editor is EXPANDED (formatting
+    //! mode)? Default false: expanded Enter inserts a line break -- see effectiveFinishOnEnter().
+    //! Meant to be driven by a user preference; the editor itself sets it to true when the user
+    //! clicks "Always send on Enter" on the enter-hint strip, and announces that through the
+    //! NOTIFY signal so the host can persist it.
+    Q_PROPERTY(bool finishOnEnterWhenExpanded READ isFinishOnEnterWhenExpanded WRITE setFinishOnEnterWhenExpanded NOTIFY finishOnEnterWhenExpandedChanged)
+
+    //! Opt in to the enter-hint strip. While expanded, and only while finishOnEnterWhenExpanded
+    //! is false, NO key sends (Enter, Shift+Enter and Ctrl/Cmd+Enter all insert a line break) and
+    //! the first such press shows a strip under the formatting toolbar explaining that, with
+    //! "Send now" / "Always send on Enter" buttons. Default FALSE, so a host that does not opt in
+    //! keeps the plain expanded behaviour (Shift/Ctrl+Enter sends).
+    Q_PROPERTY(bool enterHintEnabled READ isEnterHintEnabled WRITE setEnterHintEnabled)
+
+    //! Keep the enter-hint strip from ever showing while the rest of the enter-hint mode stays in
+    //! force (no key sends in formatting mode, Enter is a line break). Default false. Meant to be
+    //! driven by a user preference: the host turns it on once the user has closed the strip often
+    //! enough (see enterHintClosed()) or switched the hint off in the settings.
+    Q_PROPERTY(bool enterHintStripSuppressed READ isEnterHintStripSuppressed WRITE setEnterHintStripSuppressed)
+
     public:
 
         using WidgetQFrame::WidgetQFrame;
@@ -712,10 +732,76 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
          * An implementation drives its key handling from THIS, not from isFinishOnEnter() -- see
          * MessageEditor::setupReturnPressed(), which is the single place that pushes it into the
          * text edit.
+         *
+         * The suppression is lifted when the user chose "send on Enter even in formatting mode"
+         * (finishOnEnterWhenExpanded): then an expanded editor behaves like a collapsed one.
          */
         bool effectiveFinishOnEnter() const noexcept
         {
-            return m_finishOnEnter && !m_expanded;
+            return m_finishOnEnter && (!m_expanded || m_finishOnEnterWhenExpanded);
+        }
+
+        //! See the finishOnEnterWhenExpanded property. Emits the NOTIFY signal only on a change;
+        //! a host pushing its stored value in therefore also gets the signal, and must skip its
+        //! write when the value equals what it already holds (the usual echo guard).
+        void setFinishOnEnterWhenExpanded(bool enable)
+        {
+            if (m_finishOnEnterWhenExpanded==enable)
+            {
+                return;
+            }
+            m_finishOnEnterWhenExpanded=enable;
+            updateFinishOnEnter();
+            emit finishOnEnterWhenExpandedChanged(m_finishOnEnterWhenExpanded);
+        }
+
+        bool isFinishOnEnterWhenExpanded() const noexcept
+        {
+            return m_finishOnEnterWhenExpanded;
+        }
+
+        //! See the enterHintEnabled property.
+        void setEnterHintEnabled(bool enable)
+        {
+            if (m_enterHintEnabled==enable)
+            {
+                return;
+            }
+            m_enterHintEnabled=enable;
+            updateFinishOnEnter();
+        }
+
+        bool isEnterHintEnabled() const noexcept
+        {
+            return m_enterHintEnabled;
+        }
+
+        //! See the enterHintStripSuppressed property. Turning it on hides a strip that is showing.
+        void setEnterHintStripSuppressed(bool enable)
+        {
+            if (m_enterHintStripSuppressed==enable)
+            {
+                return;
+            }
+            m_enterHintStripSuppressed=enable;
+            updateFinishOnEnter();
+        }
+
+        bool isEnterHintStripSuppressed() const noexcept
+        {
+            return m_enterHintStripSuppressed;
+        }
+
+        /**
+         * @brief Is the enter-hint behaviour in force right now?
+         *
+         * Opted in, expanded, the host wants Enter to finish at all, and the user has not asked
+         * for send-on-Enter in formatting mode. In this state no key sends and a press shows the
+         * strip. (MessageEditor additionally excludes its pinned-toolbar document mode.)
+         */
+        bool isEnterHintActive() const noexcept
+        {
+            return m_enterHintEnabled && m_expanded && m_finishOnEnter && !m_finishOnEnterWhenExpanded;
         }
 
         /**
@@ -1124,6 +1210,21 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         //! See the spellCheckEnabled property.
         void spellCheckEnabledChanged(bool enabled);
 
+        //! See the finishOnEnterWhenExpanded property.
+        void finishOnEnterWhenExpandedChanged(bool enabled);
+
+        //! The user closed the enter-hint strip with its X button (not by Send now / Always, and not
+        //! by collapsing the editor). Emitted once per click; the strip then stays closed for the
+        //! rest of that formatting session. A host counts these in a row and turns
+        //! enterHintStripSuppressed on when the user keeps closing the strip without ever acting on
+        //! it -- see enterHintSendNowClicked() and finishOnEnterWhenExpandedChanged(), the acting.
+        void enterHintClosed();
+
+        //! The user clicked "Send now" on the enter-hint strip (emitted just before the message is
+        //! finished). Together with finishOnEnterWhenExpandedChanged() -- the "Always send on Enter"
+        //! button -- this is the user acting on the hint rather than dismissing it.
+        void enterHintSendNowClicked();
+
         //! The recently-used emoji list changed because the user picked one -- see
         //! setEmojiRecentIds(). Carries the WHOLE new list, most recent first, so a host can write
         //! it straight to wherever it keeps it without replaying the promotion itself. Emitted
@@ -1262,6 +1363,9 @@ class UISE_DESKTOP_EXPORT AbstractMessageEditor : public WidgetQFrame
         bool m_stackedArrangement=false;
         int m_insertedTableWidthPercent=DefaultInsertedTableWidthPercent;
         bool m_finishOnEnter=true;
+        bool m_finishOnEnterWhenExpanded=false;
+        bool m_enterHintEnabled=false;
+        bool m_enterHintStripSuppressed=false;
         bool m_contextMenuEnabled=true;
         bool m_mentionButtonVisible=false;
         bool m_mentionMenuItemVisible=false;
