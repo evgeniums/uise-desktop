@@ -138,6 +138,24 @@ ChatObjectBrowserRegistry ChatObjectBrowserRegistry::defaults()
     );
 
     registry.registerKind(
+        ChatObjectKind::Video,
+        ChatObjectBrowserKindInfo{
+            []()
+            {
+                return QCoreApplication::translate("ChatObjectBrowser","Videos");
+            },
+            []()
+            {
+                return QCoreApplication::translate("ChatObjectBrowser","No videos in this chat");
+            },
+            [](QWidget* parent) -> AbstractChatObjectBrowser*
+            {
+                return makeChatObjectVideoBrowser(parent);
+            }
+        }
+    );
+
+    registry.registerKind(
         ChatObjectKind::File,
         ChatObjectBrowserKindInfo{
             []()

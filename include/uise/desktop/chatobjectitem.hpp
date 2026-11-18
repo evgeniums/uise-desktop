@@ -49,13 +49,15 @@ class RoundedImageSource;
 /**
  * @brief Kinds of chat objects known to the stock browsers.
  *
- * The set of kinds is OPEN: a kind is just a string, a new one (e.g. "video") needs no change
+ * The set of kinds is OPEN: a kind is just a string, a new one needs no change
  * here -- only a browser registered for it, see ChatObjectBrowserRegistry.
  */
 namespace ChatObjectKind
 {
     inline const QString Image=QStringLiteral("image");
     inline const QString File=QStringLiteral("file");
+    //! A file item whose mime is video/...: listed with the stock file rows (not also under File).
+    inline const QString Video=QStringLiteral("video");
     inline const QString Voice=QStringLiteral("voice");
     inline const QString Link=QStringLiteral("link");
     inline const QString Mention=QStringLiteral("mention");

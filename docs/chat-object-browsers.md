@@ -1,7 +1,7 @@
 # Chat object browsers
 
 Widgets that browse the objects of one chat, one browser per kind of object: a thumbnail grid for
-images, lists for files, voice messages, links, mentions and found messages (search results). UI only and data driven: nothing here
+images, lists for videos, files, voice messages, links, mentions and found messages (search results). UI only and data driven: nothing here
 reads a database, computes a count or knows the client library. The owner (in the desktop app, a thin
 adapter over the bridge) answers the browsers' requests.
 
@@ -21,7 +21,7 @@ All under `include/uise/desktop`, `src`, `resources/style` of uise-desktop.
 | `chatobjectitem.hpp` | `ChatObjectKey`, `ChatObjectItem`, `ChatObjectsRequest`, `ChatObjectsPage`, `ChatObjectKind` (header only) |
 | `chatobjectbrowser.hpp/.cpp` | `ChatObjectBrowserModel`, `ChatObjectRowHooks`, `ChatObjectAction`, `AbstractChatObjectBrowser` |
 | `chatobjectlistbrowser.hpp/.cpp` | `ChatObjectListBrowser` (a row per object), `ChatObjectRowFactory` |
-| `chatobjectrows.cpp` | row factories and browser makers of the file, voice, link, mention, bookmark and search kinds |
+| `chatobjectrows.cpp` | row factories and browser makers of the video (file rows), file, voice, link, mention, bookmark and search kinds |
 | `chatobjectsearchsnippet.hpp/.cpp` | `ChatObjectSearchSnippet` (the highlighted snippet label of a search row) and `chatObjectHighlightHtml()` |
 | `chatobjectgallerybrowser.hpp/.cpp` | `ChatObjectGalleryBrowser`, the thumbnail grid |
 | `chatobjectbrowserpanel.hpp/.cpp` | `ChatObjectBrowserRegistry`, `ChatObjectBrowserPanel` (back and title bar) |
@@ -33,7 +33,7 @@ Demo: `demo/chatobjectbrowser` (`chatobjectbrowser-demo`). Tests: `test/chatobje
 ## 2. Data types
 
 ```cpp
-namespace ChatObjectKind { Image="image", File="file", Voice="voice", Link="link", Mention="mention", Bookmark="bookmark", Search="search" }
+namespace ChatObjectKind { Image="image", Video="video", File="file", Voice="voice", Link="link", Mention="mention", Bookmark="bookmark", Search="search" }
 ```
 
 A kind is **any string**. The set is open; a new kind (video) is registered, see 5.

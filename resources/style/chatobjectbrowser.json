@@ -10,6 +10,7 @@
                 "openInBrowser" : "${uise-svg-icons-1}/external-link",
                 "image" : "${uise-svg-icons-1}/photo",
                 "file" : "${uise-svg-icons-1}/file",
+                "video" : "${uise-svg-icons-1}/video",
                 "voice" : "${uise-svg-icons-1}/microphone",
                 "link" : "${uise-svg-icons-1}/link",
                 "mention" : "${uise-svg-icons-1}/at",

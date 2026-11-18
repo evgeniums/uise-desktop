@@ -1046,6 +1046,13 @@ ChatObjectListBrowser* makeChatObjectFileBrowser(QWidget* parent)
 
 //--------------------------------------------------------------------------
 
+ChatObjectListBrowser* makeChatObjectVideoBrowser(QWidget* parent)
+{
+    return new ChatObjectListBrowser(ChatObjectKind::Video,makeChatObjectFileRowFactory(),parent);
+}
+
+//--------------------------------------------------------------------------
+
 ChatObjectListBrowser* makeChatObjectVoiceBrowser(QWidget* parent)
 {
     return new ChatObjectListBrowser(ChatObjectKind::Voice,makeChatObjectVoiceRowFactory(),parent);

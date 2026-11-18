@@ -130,6 +130,9 @@ UISE_DESKTOP_EXPORT ChatObjectRowFactory makeChatObjectSearchRowFactory();
 //! Browser of the "file" kind.
 UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectFileBrowser(QWidget* parent=nullptr);
 
+//! Browser of the "video" kind: the file rows (the host opens the file, as for a file).
+UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectVideoBrowser(QWidget* parent=nullptr);
+
 //! Browser of the "voice" kind.
 UISE_DESKTOP_EXPORT ChatObjectListBrowser* makeChatObjectVoiceBrowser(QWidget* parent=nullptr);
 
