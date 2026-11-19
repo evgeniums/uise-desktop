@@ -266,6 +266,14 @@ bool EditableLabel::eventFilter(QObject *watched, QEvent *event)
             {
                 if (m_inGroup)
                 {
+                    // The enclosing panel is read-only: it hides its edit buttons and
+                    // refuses edit(), so do not request group editing or move focus to the
+                    // (hidden) editor either.
+                    if (m_panel!=nullptr && !m_panel->isEditable())
+                    {
+                        return false;
+                    }
+
                     if (isGroupEditingRequestEnabled())
                     {
                         emit groupEditingRequested();

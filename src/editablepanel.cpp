@@ -391,7 +391,7 @@ void EditablePanel::updateAlignments()
 
 void EditablePanel::edit()
 {
-    if (isEditingMode())
+    if (isEditingMode() || !isEditable())
     {
         return;
     }
