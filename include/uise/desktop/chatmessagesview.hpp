@@ -798,6 +798,16 @@ class ChatMessagesView : public AbstractChatMessagesView
         void onMessageClicked(const Id& id);
 
         void adjustMessagesSizes(std::vector<Message*>* messages=nullptr);
+
+        //! The list only needs a horizontal scrollbar when the viewport is narrower than the
+        //! minimum bubble width: every wider viewport has its bubbles renegotiated to fit. With
+        //! ScrollBarAsNeeded the list is sized from the rows' size hints, which right after a
+        //! viewport resize still belong to the previous width (the layout resizes the viewport
+        //! before resizeEvent() renegotiates) -- a stale hint wider than the new viewport made the
+        //! list overflow for a moment, showing the (auto-hidden but 8px tall) bar and shifting the
+        //! bottom-stuck content up and back. ScrollBarAlwaysOff sizes the list to the viewport.
+        void updateHorizontalScrollBarPolicy();
+
         int messageContentWidth() const;
         int defaultMessageContentWidth() const;
         void adjustMesssageSize(Message* msg);

@@ -1668,6 +1668,7 @@ void ChatMessagesView<BaseMessageT,Traits>::resizeEvent(QResizeEvent* event)
     {
         adjustMessagesSizes();
     }
+    updateHorizontalScrollBarPolicy();
 
     // The viewport's own height just changed, so the floating avatar's natural bottom-anchored Y
     // (and possibly the clamp against it) did too.
@@ -1717,6 +1718,7 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessagesSizes(std::vector<Mess
             return true;
         };
         m_listView->eachItem(handler);
+        updateHorizontalScrollBarPolicy();
     }
     else
     {
@@ -1727,6 +1729,27 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessagesSizes(std::vector<Mess
                 adjustMesssageSize(msg);
             }
         }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::updateHorizontalScrollBarPolicy()
+{
+    // Nothing sampled yet (no message built): keep the default policy.
+    if (m_messageMinWidth<=0)
+    {
+        return;
+    }
+
+    // Unclamped counterpart of messageContentWidth(): bubbles shrink to fit down to
+    // m_messageMinWidth, below that they cannot and the list has to scroll sideways.
+    const auto unclamped=m_listView->viewportSize().width() - horizontalTotalMargin(this) - m_messageBubbleOuterWidth;
+    const auto policy=(unclamped>=m_messageMinWidth) ? Qt::ScrollBarAlwaysOff : Qt::ScrollBarAsNeeded;
+    if (m_listView->horizontalScrollBarPolicy()!=policy)
+    {
+        m_listView->setHorizontalScrollBarPolicy(policy);
     }
 }
 
