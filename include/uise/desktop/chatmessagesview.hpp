@@ -556,6 +556,15 @@ class ChatMessagesView : public AbstractChatMessagesView
         //! purely visual scroll within what is already loaded.
         void jumpToEdge(Direction direction);
 
+        //! True when a message with this sort value, appended now, would land across a gap: the
+        //! window has a last item, that item is before `value`, and the window does not reach the
+        //! true end of the chat (see FlyweightListView::isEndLoaded()) -- e.g. the newest rows were
+        //! evicted while the user scrolled far up. Appending such a message would make the window
+        //! look complete (doInsertMessage() raises the max marker to it) and hide everything in the
+        //! gap until a reload; the owner should skip the insert and let a jump/prefetch fetch it.
+        //! `value` must be in the same key as the view items' own sortValue(). False for an empty list.
+        bool isBeyondUnloadedTail(const SortValue& value) const;
+
         Message* message(const Id& id) const;
 
         std::vector<Data> selectedMessages() const;

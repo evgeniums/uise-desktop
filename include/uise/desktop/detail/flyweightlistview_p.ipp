@@ -3743,7 +3743,7 @@ void FlyweightListView_p<ItemT,OrderComparer,IdComparer>::jumpToEdge(Direction d
         {
             scrollToLocalEnd();
         }
-        else if (last!=nullptr && m_maxSortValueSet && !m_orderComparer(last->sortValue(),m_maxSortValue))
+        else if (isEndLoadedAt(last))
         {
             scrollToLocalEnd();
         }

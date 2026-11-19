@@ -697,6 +697,18 @@ class FlyweightListView : public QFrame
         bool isBeginLoaded() const noexcept;
 
         /**
+         * @brief Check if the loaded window already reaches the true end of the data.
+         * @return True if the max sorting value was set by the owner and the last item is not
+         *  before it, i.e. no prefetch to the END side can bring more items.
+         *
+         * Mirror of isBeginLoaded(); the same predicate that stops the scroll-driven prefetch and
+         * lets jumpToEdge(END) scroll locally. False for an empty list.
+         *
+         * See also setMaxSortValue().
+         */
+        bool isEndLoaded() const noexcept;
+
+        /**
          * @brief Get vertical scrollbar.
          * @return Query result.
          */

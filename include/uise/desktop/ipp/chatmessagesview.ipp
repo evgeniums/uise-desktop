@@ -1166,6 +1166,19 @@ void ChatMessagesView<BaseMessageT,Traits>::jumpToEdge(Direction direction)
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::isBeyondUnloadedTail(const SortValue& value) const
+{
+    const auto* last=m_listView->lastItem();
+    if (last==nullptr)
+    {
+        return false;
+    }
+    return last->sortValue()<value && !m_listView->isEndLoaded();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
 void ChatMessagesView<BaseMessageT,Traits>::adjustCurrentMessagesList()
 {
     std::vector<Message*> messages;

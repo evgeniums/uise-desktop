@@ -698,6 +698,13 @@ bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isBeginLoaded() const no
 
 //--------------------------------------------------------------------------
 template <typename ItemT, typename OrderComparer, typename IdComparer>
+bool FlyweightListView<ItemT,OrderComparer,IdComparer>::isEndLoaded() const noexcept
+{
+    return pimpl->isEndLoadedAt(pimpl->lastItem());
+}
+
+//--------------------------------------------------------------------------
+template <typename ItemT, typename OrderComparer, typename IdComparer>
 QScrollBar* FlyweightListView<ItemT,OrderComparer,IdComparer>::verticalScrollBar() const noexcept
 {
     return pimpl->m_vbar;

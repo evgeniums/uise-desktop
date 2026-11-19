@@ -235,6 +235,15 @@ class FlyweightListView_p : public OrientationInvariant
             return first!=nullptr && m_minSortValueSet && !m_orderComparer(m_minSortValue,first->sortValue());
         }
 
+        // Mirror of isBeginLoadedAt(): true when the owner has set the max marker and `last` (the
+        // list's last item) is not before it, i.e. nothing more exists after the loaded window.
+        // The negation of checkItemCount()'s canFetchAfter; jumpToEdge(END) and the owner's
+        // "may a live item be appended here" check must stay in lockstep with it.
+        bool isEndLoadedAt(const ItemT* last) const noexcept
+        {
+            return last!=nullptr && m_maxSortValueSet && !m_orderComparer(last->sortValue(),m_maxSortValue);
+        }
+
         bool isHorizontal() const noexcept override;
 
         void onListContentResized();
