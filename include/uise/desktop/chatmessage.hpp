@@ -171,7 +171,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
         //! Reacts to a CHANGE in AbstractChatMessageContent::isBubbleTransparent(): repolishes
         //! this bubble to [transparent=...] (chat.qss drops the background/border-radius rule for
-        //! it), puts bottom() into/out of chip mode, and re-derives the row's hover visibility --
+        //! it), puts bottom() into/out of chip mode, and re-asserts the row's visibility --
         //! see updateBottomVisibility().
         void applyBubbleTransparency(bool enable) override;
 
@@ -197,16 +197,6 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         //! to `pad` px -- see AbstractChatMessageContent::applyAvatarSyncPad()'s own doc comment.
         void applyAvatarSyncPad(int pad) override;
 
-        //! Reveals bottom() while the pointer is over THIS bubble -- deliberately the bubble
-        //! itself, not the full-width message row, so hovering the empty column beside a
-        //! narrow/transparent bubble does not pop the chip. Moving from this widget onto one of
-        //! its own children (an image tile, the chip itself) does not fire leaveEvent() -- Qt
-        //! only sends Leave to a widget that stops being an ancestor of whatever is now under the
-        //! pointer -- so no extra bookkeeping is needed to keep the chip up while hovering the
-        //! content it sits over. Same idiom as ChatMessageReactionChip::enterEvent()/leaveEvent().
-        void enterEvent(QEnterEvent* event) override;
-        void leaveEvent(QEvent* event) override;
-
     private slots:
 
         void updateFirstInBatch();
@@ -214,13 +204,11 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
 
     private:
 
-        //! Shows/hides bottom() -- a no-op (always visible) unless isBubbleTransparent(), in
-        //! which case it is visible only while m_hovered or isBottomPinned(). Geometry is untouched either way:
-        //! bottom() is never a layout item (see updateBottomPlacement()), and
-        //! AbstractChatMessageBottom::placedSize() already reserves chip padding purely from
-        //! isChipMode() -- a per-message state applyBubbleTransparency() sets once, not from
-        //! whether the row happens to be visible right now -- so revealing/hiding it here can
-        //! never shift the bubble.
+        //! Makes bottom() visible -- it is always shown now, for the opaque and the transparent
+        //! (chip) bubble alike. Called after every path that may have hidden or re-shown it.
+        //! Geometry is untouched: bottom() is never a layout item (see updateBottomPlacement()),
+        //! and AbstractChatMessageBottom::placedSize() reserves chip padding purely from
+        //! isChipMode().
         void updateBottomVisibility();
 
         //! Which side this bubble sits/points to -- read straight off the message rather than
@@ -236,7 +224,7 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
          * the row goes inline (AbstractChatMessageContent::evaluateInlineBottom()), and with no
          * background painted that reserved strip is simply invisible -- so on a right-aligned
          * message a left-aligned content would appear to float away from the margin every other
-         * message lines up against, with a blank gap where the (hover-only) chip will be. Flipping
+         * message lines up against, with a blank gap where the chip will be. Flipping
          * both the content and the chip puts that gap on the INSIDE of the conversation, where it
          * reads as ordinary spacing.
          *
@@ -251,11 +239,6 @@ class UISE_DESKTOP_EXPORT ChatMessageContent : public AbstractChatMessageContent
         void applySectionAlignment();
 
         QBoxLayout* m_layout;
-
-        //! Whether the pointer is currently over this bubble -- see enterEvent()/leaveEvent()
-        //! and updateBottomVisibility(). Meaningless (never consulted) unless
-        //! isBubbleTransparent().
-        bool m_hovered=false;
 
         //! Whether bottom() is currently a child item of m_layout (row mode) or has been taken
         //! out of it and is positioned manually instead (inline mode) -- see

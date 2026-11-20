@@ -861,10 +861,9 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageBottom : public ChatMessageContentS
         //! chipPadding() on every side while isChipMode(), unchanged otherwise. This, not
         //! naturalSize(), is what AbstractChatMessageContent::evaluateInlineBottom() records as
         //! bottomNaturalSize(): the chip's padding must be reserved space regardless of whether
-        //! the row is CURRENTLY visible, since AbstractChatMessageContent hides/reveals it purely
-        //! on hover (see updateBottomVisibility()) and the bubble must not resize when that
-        //! happens -- reserving unconditionally on isChipMode() (a per-message state, not "is the
-        //! pointer over the bubble right now") is what makes that guarantee hold.
+        //! the row is CURRENTLY visible (see ChatMessageContent::updateBottomVisibility()) --
+        //! reserving unconditionally on isChipMode() (a per-message state) keeps the bubble's size
+        //! independent of visibility.
         QSize placedSize() const
         {
             auto sz=naturalSize();
@@ -1200,7 +1199,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
         //! the row is actually laid out at, in BOTH modes (it is manually placed either way, see
         //! ChatMessageContent::positionBottom()). Despite the name, NOT bottom()->naturalSize():
         //! while the row is in chip mode this already includes its chip padding, which must be
-        //! reserved space regardless of the row's current hover visibility -- see placedSize()'s
+        //! reserved space regardless of the row's current visibility -- see placedSize()'s
         //! own doc comment.
         QSize bottomNaturalSize() const noexcept
         {
@@ -1303,9 +1302,10 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
             return m_bubbleTransparent;
         }
 
-        //! Keeps bottom() (the time/status chip) visible on a TRANSPARENT bubble regardless of
-        //! hover -- for state the user must not miss, e.g. a message that is still being sent or
-        //! failed to send. No effect on an opaque bubble (its row is always visible). Geometry is
+        //! Marks the time/status row as state the user must not miss, e.g. a message that is
+        //! still being sent or failed to send. Since the chip of a transparent bubble is now always
+        //! visible, this no longer changes visibility (kept for API compatibility and for
+        //! concrete contents that may want to react via applyBottomPinned()). Geometry is
         //! untouched: the chip's padding is reserved from bottom()->isChipMode() alone, never from
         //! whether the row is currently shown. A no-op when the value does not change.
         void setBottomPinned(bool enable)
@@ -1418,7 +1418,7 @@ class UISE_DESKTOP_EXPORT AbstractChatMessageContent : public AbstractChatMessag
 
         //! Apply a CHANGE in isBubbleTransparent() to this concrete content's own widgets --
         //! typically Style::setStyleProperty(this,"transparent",enable), bottom()->setChipMode(),
-        //! and re-deriving the bottom row's hover visibility. A no-op default: a concrete content
+        //! and re-asserting the bottom row's visibility. A no-op default: a concrete content
         //! type with no bubble-background QSS to drop has nothing to do here.
         virtual void applyBubbleTransparency(bool /*enable*/) {}
 

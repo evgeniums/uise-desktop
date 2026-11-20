@@ -434,8 +434,8 @@ void AbstractChatMessageContent::evaluateInlineBottom(int forMaxWidth)
     // is actually given (see ChatMessageContent::positionBottom()). placedSize(), not
     // naturalSize(): while isChipMode() this grows by the chip's own padding on every side, and
     // that padding must be reserved regardless of whether the row is CURRENTLY visible (it is
-    // shown/hidden purely on hover, see ChatMessageContent::updateBottomVisibility()) or the
-    // bubble would resize on every hover in/out.
+    // shown/hidden by ChatMessageContent::updateBottomVisibility()) or the bubble's size would
+    // depend on that state.
     m_bottomNaturalSize=b->placedSize();
 
     auto line=t->lastTextLineRect();
@@ -1103,7 +1103,7 @@ void ChatMessageContent::updateWidgets()
         // bubble that was previously in inline mode).
         m_bottomInLayout=true;
         // The unconditional show() above must not win over an already-established transparent,
-        // not-currently-hovered bubble -- setReply()/setComment() can re-run this on a bubble
+        // already-negotiated bubble -- setReply()/setComment() can re-run this on a bubble
         // that has already been negotiated once and is sitting there hidden.
         updateBottomVisibility();
     }
@@ -1176,7 +1176,7 @@ void ChatMessageContent::updateBottomPlacement()
 
     // Re-derive AFTER the chip-mode margins above -- a rebuild (updateWidgets()) or a negotiation
     // pass landing here can each change isChipMode()/isBubbleTransparent() without an intervening
-    // hover event, and the row must never be left visible (or hidden) on stale state.
+    // other event, and the row must never be left hidden on stale state.
     updateBottomVisibility();
 }
 
@@ -1446,8 +1446,7 @@ void ChatMessageContent::applyBubbleTransparency(bool enable)
     applySectionAlignment();
 
     // A flip either way can change whether the row should be visible right now (going
-    // transparent while not hovered hides it; going back opaque always reveals it, regardless of
-    // hover).
+    // transparent no longer hides it, so this is just the idempotent re-assertion).
     updateBottomVisibility();
 }
 
@@ -1460,42 +1459,19 @@ void ChatMessageContent::updateBottomVisibility()
     {
         return;
     }
-    // Always visible for the ordinary opaque bubble; visible only on hover (or while pinned, e.g.
-    // a message still sending / failed) when transparent -- see enterEvent()/leaveEvent().
-    // Geometry is untouched either way, see this class' own
-    // updateBottomPlacement()/AbstractChatMessageBottom::placedSize() doc comments.
-    b->setVisible(!isBubbleTransparent() || m_hovered || isBottomPinned());
+    // Always visible, for the opaque bubble and the transparent one alike (the transparent
+    // bubble's chip used to appear on hover only; it is now permanent, since its space is
+    // reserved regardless -- see AbstractChatMessageBottom::placedSize()). Kept as one place that
+    // re-asserts visibility after the rebuild/negotiation paths that show() the row.
+    b->setVisible(true);
 }
 
 //--------------------------------------------------------------------------
 
 void ChatMessageContent::applyBottomPinned(bool /*enable*/)
 {
+    // The row is always visible now, so pinning no longer changes its visibility.
     updateBottomVisibility();
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessageContent::enterEvent(QEnterEvent* event)
-{
-    AbstractChatMessageContent::enterEvent(event);
-    m_hovered=true;
-    if (isBubbleTransparent())
-    {
-        updateBottomVisibility();
-    }
-}
-
-//--------------------------------------------------------------------------
-
-void ChatMessageContent::leaveEvent(QEvent* event)
-{
-    AbstractChatMessageContent::leaveEvent(event);
-    m_hovered=false;
-    if (isBubbleTransparent())
-    {
-        updateBottomVisibility();
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -2434,7 +2410,7 @@ QString ChatMessage::checkGeometry() const
     }
 
     // A row-mode/inline bottom that sticks out below the bubble is clipped. Transparent bubbles
-    // are skipped: their hover chip is deliberately overlaid on the content and may overhang.
+    // are skipped: their chip is deliberately overlaid on the content and may overhang.
     auto* b=c->bottom();
     if (b!=nullptr && !b->isHidden() && !c->isBubbleTransparent()
         && b->geometry().bottom()>c->rect().bottom()+Tolerance)
@@ -2855,13 +2831,11 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
     {
         // Bare content over the chat wallpaper: the rowMinWidth floor below does not apply --
         // the whole point of a transparent bubble is that it is exactly as wide as its content
-        // (the image, or the emoji row), not artificially stretched to make room for a row the
-        // pointer has to hover to even see.
+        // (the image, or the emoji row), not artificially stretched to make room for the row.
         //
         // The one floor that does survive is this row's OWN width: it is placed by hand inside
         // this bubble (ChatMessageContent::positionBottom()) and a child widget is clipped to its
-        // parent, so a bubble narrower than the chip would slice the timestamp in half the moment
-        // hovering reveals it. Far below rowMinWidth(), and it only binds for content narrower
+        // parent, so a bubble narrower than the chip would slice the timestamp in half. Far below rowMinWidth(), and it only binds for content narrower
         // than a timestamp -- a single emoji, or one very small thumbnail.
         return std::min(std::max(bodyHW,placedSize().width()),forMaxWidth);
     }
@@ -2869,8 +2843,8 @@ int ChatMessageBottom::bubbleWidthHint(int forMaxWidth)
     // ROW mode: the row is placed on its own line BELOW the body and right-aligned against the
     // bubble (ChatMessageContent::positionBottom()), not beside it -- so the bubble needs no
     // extra width to seat it, only enough not to clip it. placedSize(), not naturalSize(), for
-    // the same reason evaluateInlineBottom() uses it (the chip's own padding, reserved whether or
-    // not the chip is currently shown, so the bubble never resizes on hover in/out).
+    // the same reason evaluateInlineBottom() uses it (the chip's own padding, reserved in chip
+    // mode so the bubble's size depends only on that per-message state).
     auto wHint=std::max(bodyHW,placedSize().width());
 
     if (wHint>forMaxWidth)

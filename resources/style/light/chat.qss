@@ -111,8 +111,8 @@ uise--ChatMessageBottom QLabel[selected="true"][sent="true"]{
 color: #1e6091;
 }
 
-/* The small rounded background a transparent bubble's bottom row paints behind itself once
- * hovered (chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules).
+/* The small rounded background a transparent bubble's bottom row paints behind itself (always
+ * shown; chip mode -- see ../chat.qss's own qproperty-chipPadding/[chip="true"] rules).
  *
  * Exactly the bubble colours at the top of this file, paired one-for-one on [sent=...] the same
  * way the tail colours are: the chip IS the bubble's own bottom row, just shrunk to its own
