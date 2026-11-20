@@ -147,9 +147,10 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>AbstractDialog</name>
     <message>
+        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
         <source>Close</source>
         <comment>dialog</comment>
-        <translation type="obsolete">Close</translation>
+        <translation type="unfinished">Close</translation>
     </message>
     <message>
         <source>Close</source>
@@ -1633,6 +1634,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <name>ReactionIconPack</name>
     <message>
         <location filename="../src/reactioniconpack.cpp" line="+75"/>
+        <location line="+0"/>
         <source>thumbs up</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1659,6 +1661,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-17"/>
+        <location line="+0"/>
         <source>red heart</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1673,6 +1676,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="+0"/>
         <location line="+0"/>
         <source>tears of joy</source>
         <translation type="unfinished"></translation>
@@ -1695,6 +1699,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-27"/>
+        <location line="+0"/>
         <source>open mouth</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1717,6 +1722,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>pray</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1732,6 +1738,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>fire</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1748,6 +1755,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+3"/>
         <location line="+3"/>
+        <location line="+0"/>
         <source>grin</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1759,6 +1767,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-1"/>
+        <location line="+0"/>
         <source>grinning face</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1771,6 +1780,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-5"/>
+        <location line="+0"/>
         <source>smiling eyes</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1811,6 +1821,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>blush</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1831,6 +1842,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <location line="+3"/>
         <source>wink</source>
         <translation type="unfinished"></translation>
@@ -1842,6 +1854,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>heart eyes</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1882,6 +1895,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>thinking</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1902,6 +1916,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>sleeping</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1912,6 +1927,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>cool</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2014,6 +2030,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>angry</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2029,11 +2046,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>mind blown</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>thumbs down</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2054,6 +2073,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="+0"/>
         <location line="+0"/>
         <source>applause</source>
         <translation type="unfinished"></translation>
@@ -2120,6 +2140,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>handshake</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2159,6 +2180,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="+0"/>
         <location line="+0"/>
         <source>party popper</source>
         <translation type="unfinished"></translation>
@@ -2250,6 +2272,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>star</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2260,6 +2283,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>broken heart</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2285,6 +2309,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>eyes</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2330,6 +2355,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>rocket</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2345,6 +2371,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>smirk</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2395,6 +2422,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>sparkles</source>
         <translation type="unfinished">sparkles</translation>
     </message>
@@ -2410,6 +2438,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>crossed fingers</source>
         <translation type="unfinished">crossed fingers</translation>
     </message>
@@ -2935,10 +2964,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Unknown</translation>
     </message>
     <message>
-        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
         <source>Close</source>
         <comment>dialog</comment>
-        <translation>Close</translation>
+        <translation type="vanished">Close</translation>
     </message>
 </context>
 <context>
@@ -3157,7 +3185,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2534"/>
+        <location filename="../src/chatmessage.cpp" line="+2510"/>
         <source>Created: %1</source>
         <translation>Created: %1</translation>
     </message>

@@ -147,9 +147,10 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>AbstractDialog</name>
     <message>
+        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
         <source>Close</source>
         <comment>dialog</comment>
-        <translation type="obsolete">Закрыть</translation>
+        <translation type="unfinished">Закрыть</translation>
     </message>
     <message>
         <source>Close</source>
@@ -1616,6 +1617,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <name>ReactionIconPack</name>
     <message>
         <location filename="../src/reactioniconpack.cpp" line="+75"/>
+        <location line="+0"/>
         <source>thumbs up</source>
         <translation>палец вверх</translation>
     </message>
@@ -1642,6 +1644,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-17"/>
+        <location line="+0"/>
         <source>red heart</source>
         <translation>красное сердце</translation>
     </message>
@@ -1656,6 +1659,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>радость</translation>
     </message>
     <message>
+        <location line="+0"/>
         <location line="+0"/>
         <source>tears of joy</source>
         <translation>слёзы радости</translation>
@@ -1678,6 +1682,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-27"/>
+        <location line="+0"/>
         <source>open mouth</source>
         <translation>открытый рот</translation>
     </message>
@@ -1700,6 +1705,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>pray</source>
         <translation>молитва</translation>
     </message>
@@ -1715,6 +1721,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>fire</source>
         <translation>огонь</translation>
     </message>
@@ -1731,6 +1738,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <message>
         <location line="+3"/>
         <location line="+3"/>
+        <location line="+0"/>
         <source>grin</source>
         <translation>ухмылка</translation>
     </message>
@@ -1742,6 +1750,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-1"/>
+        <location line="+0"/>
         <source>grinning face</source>
         <translation>улыбающееся лицо</translation>
     </message>
@@ -1754,6 +1763,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="-5"/>
+        <location line="+0"/>
         <source>smiling eyes</source>
         <translation>смеющиеся глаза</translation>
     </message>
@@ -1794,6 +1804,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>blush</source>
         <translation>смущение</translation>
     </message>
@@ -1814,6 +1825,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <location line="+3"/>
         <source>wink</source>
         <translation>подмигивание</translation>
@@ -1825,6 +1837,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>heart eyes</source>
         <translation>сердечки в глазах</translation>
     </message>
@@ -1865,6 +1878,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>thinking</source>
         <translation>задумался</translation>
     </message>
@@ -1885,6 +1899,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>sleeping</source>
         <translation>сплю</translation>
     </message>
@@ -1895,6 +1910,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>cool</source>
         <translation>круто</translation>
     </message>
@@ -1997,6 +2013,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>angry</source>
         <translation>злой</translation>
     </message>
@@ -2012,11 +2029,13 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>mind blown</source>
         <translation>взрыв мозга</translation>
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>thumbs down</source>
         <translation>палец вниз</translation>
     </message>
@@ -2037,6 +2056,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>аплодисменты</translation>
     </message>
     <message>
+        <location line="+0"/>
         <location line="+0"/>
         <source>applause</source>
         <translation>овации</translation>
@@ -2103,6 +2123,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>handshake</source>
         <translation>рукопожатие</translation>
     </message>
@@ -2142,6 +2163,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>та-да</translation>
     </message>
     <message>
+        <location line="+0"/>
         <location line="+0"/>
         <source>party popper</source>
         <translation>хлопушка</translation>
@@ -2233,6 +2255,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>star</source>
         <translation>звезда</translation>
     </message>
@@ -2243,6 +2266,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>broken heart</source>
         <translation>разбитое сердце</translation>
     </message>
@@ -2268,6 +2292,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>eyes</source>
         <translation>глаза</translation>
     </message>
@@ -2313,6 +2338,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>rocket</source>
         <translation>ракета</translation>
     </message>
@@ -2328,6 +2354,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>smirk</source>
         <translation>ухмылка</translation>
     </message>
@@ -2378,6 +2405,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>sparkles</source>
         <translation>искры</translation>
     </message>
@@ -2393,6 +2421,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     </message>
     <message>
         <location line="+1"/>
+        <location line="+0"/>
         <source>crossed fingers</source>
         <translation>скрещённые пальцы</translation>
     </message>
@@ -2914,10 +2943,9 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Неизвестно</translation>
     </message>
     <message>
-        <location filename="../include/uise/desktop/ipp/dialog.ipp" line="+100"/>
         <source>Close</source>
         <comment>dialog</comment>
-        <translation>Закрыть</translation>
+        <translation type="vanished">Закрыть</translation>
     </message>
 </context>
 <context>
@@ -3137,7 +3165,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::ChatMessage</name>
     <message>
-        <location filename="../src/chatmessage.cpp" line="+2534"/>
+        <location filename="../src/chatmessage.cpp" line="+2510"/>
         <source>Created: %1</source>
         <translation>Создано: %1</translation>
     </message>
