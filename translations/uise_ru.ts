@@ -3327,12 +3327,12 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
     <name>uise::EditableLabel</name>
     <message>
         <location filename="../src/editablelabel.cpp" line="+125"/>
-        <location line="+171"/>
+        <location line="+179"/>
         <source>Edit</source>
         <translation>Изменить</translation>
     </message>
     <message>
-        <location line="-164"/>
+        <location line="-172"/>
         <source>Apply</source>
         <translation>Применить</translation>
     </message>
@@ -3342,7 +3342,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
         <translation>Отмена</translation>
     </message>
     <message>
-        <location line="+160"/>
+        <location line="+168"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
@@ -3451,7 +3451,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::FileUploadListItem</name>
     <message>
-        <location filename="../src/fileuploadlistitem.cpp" line="+285"/>
+        <location filename="../src/fileuploadlistitem.cpp" line="+291"/>
         <location line="+175"/>
         <source>Edit text</source>
         <translation>Изменить текст</translation>
