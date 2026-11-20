@@ -36,31 +36,45 @@ UISE_DESKTOP_NAMESPACE_BEGIN
 QString fileTypeIconName(const QString& suffix)
 {
     static const std::map<QString,QString> mapping{
-        {QStringLiteral("pdf"),QStringLiteral("pdf")},
-        {QStringLiteral("doc"),QStringLiteral("doc")},
-        {QStringLiteral("docx"),QStringLiteral("docx")},
-        {QStringLiteral("xls"),QStringLiteral("xls")},
-        {QStringLiteral("xlsx"),QStringLiteral("xls")},
-        {QStringLiteral("ppt"),QStringLiteral("ppt")},
-        {QStringLiteral("pptx"),QStringLiteral("ppt")},
-        {QStringLiteral("txt"),QStringLiteral("txt")},
-        {QStringLiteral("csv"),QStringLiteral("csv")},
-        {QStringLiteral("zip"),QStringLiteral("zip")},
-        {QStringLiteral("rar"),QStringLiteral("zip")},
-        {QStringLiteral("7z"),QStringLiteral("zip")},
-        {QStringLiteral("html"),QStringLiteral("html")},
-        {QStringLiteral("htm"),QStringLiteral("html")},
-        {QStringLiteral("css"),QStringLiteral("css")},
-        {QStringLiteral("js"),QStringLiteral("js")},
-        {QStringLiteral("jsx"),QStringLiteral("jsx")},
-        {QStringLiteral("ts"),QStringLiteral("ts")},
-        {QStringLiteral("tsx"),QStringLiteral("tsx")},
-        {QStringLiteral("xml"),QStringLiteral("xml")},
-        {QStringLiteral("svg"),QStringLiteral("svg")},
-        {QStringLiteral("php"),QStringLiteral("php")},
-        {QStringLiteral("sql"),QStringLiteral("sql")},
-        {QStringLiteral("rs"),QStringLiteral("rs")},
-        {QStringLiteral("vue"),QStringLiteral("vue")}
+        {QStringLiteral("pdf"),QStringLiteral("file-type-pdf")},
+        {QStringLiteral("doc"),QStringLiteral("file-type-doc")},
+        {QStringLiteral("docx"),QStringLiteral("file-type-docx")},
+        {QStringLiteral("xls"),QStringLiteral("file-type-xls")},
+        {QStringLiteral("xlsx"),QStringLiteral("file-type-xls")},
+        {QStringLiteral("ppt"),QStringLiteral("file-type-ppt")},
+        {QStringLiteral("pptx"),QStringLiteral("file-type-ppt")},
+        {QStringLiteral("txt"),QStringLiteral("file-type-txt")},
+        {QStringLiteral("csv"),QStringLiteral("file-type-csv")},
+        // zip has its own "ZIP" glyph; every other archive format gets the format-neutral
+        // "file-zip" so it is not mislabelled as a zip (tabler has no rar/7z/tar/... glyphs)
+        {QStringLiteral("zip"),QStringLiteral("file-type-zip")},
+        {QStringLiteral("rar"),QStringLiteral("file-zip")},
+        {QStringLiteral("7z"),QStringLiteral("file-zip")},
+        {QStringLiteral("tar"),QStringLiteral("file-zip")},
+        {QStringLiteral("gz"),QStringLiteral("file-zip")},
+        {QStringLiteral("tgz"),QStringLiteral("file-zip")},
+        {QStringLiteral("bz2"),QStringLiteral("file-zip")},
+        {QStringLiteral("tbz"),QStringLiteral("file-zip")},
+        {QStringLiteral("tbz2"),QStringLiteral("file-zip")},
+        {QStringLiteral("xz"),QStringLiteral("file-zip")},
+        {QStringLiteral("txz"),QStringLiteral("file-zip")},
+        {QStringLiteral("zst"),QStringLiteral("file-zip")},
+        {QStringLiteral("lz"),QStringLiteral("file-zip")},
+        {QStringLiteral("lzma"),QStringLiteral("file-zip")},
+        {QStringLiteral("cab"),QStringLiteral("file-zip")},
+        {QStringLiteral("html"),QStringLiteral("file-type-html")},
+        {QStringLiteral("htm"),QStringLiteral("file-type-html")},
+        {QStringLiteral("css"),QStringLiteral("file-type-css")},
+        {QStringLiteral("js"),QStringLiteral("file-type-js")},
+        {QStringLiteral("jsx"),QStringLiteral("file-type-jsx")},
+        {QStringLiteral("ts"),QStringLiteral("file-type-ts")},
+        {QStringLiteral("tsx"),QStringLiteral("file-type-tsx")},
+        {QStringLiteral("xml"),QStringLiteral("file-type-xml")},
+        {QStringLiteral("svg"),QStringLiteral("file-type-svg")},
+        {QStringLiteral("php"),QStringLiteral("file-type-php")},
+        {QStringLiteral("sql"),QStringLiteral("file-type-sql")},
+        {QStringLiteral("rs"),QStringLiteral("file-type-rs")},
+        {QStringLiteral("vue"),QStringLiteral("file-type-vue")}
     };
     auto it=mapping.find(suffix);
     return (it!=mapping.end()) ? it->second : QString();
@@ -76,7 +90,7 @@ std::shared_ptr<SvgIcon> fileTypeIcon(const QString& suffix, QWidget* context, c
         return Style::instance().svgIconLocator().icon(fallbackAlias,context);
     }
 
-    auto path=QString(":/icons/tabler-icons/outline/file-type-%1.svg").arg(name);
+    auto path=QString(":/icons/tabler-icons/outline/%1.svg").arg(name);
     if (!QFile::exists(path))
     {
         return Style::instance().svgIconLocator().icon(fallbackAlias,context);

@@ -38,11 +38,15 @@ class QWidget;
 UISE_DESKTOP_NAMESPACE_BEGIN
 
 /**
- * @brief Map a lowercased file extension to a curated tabler "file-type-*" icon name (see
- *  thirdparty/tabler-icons/outline/file-type-*.svg).
+ * @brief Map a lowercased file extension to a curated tabler outline icon basename (see
+ *  thirdparty/tabler-icons/outline/), e.g. "file-type-pdf".
+ *
+ * Formats that have their own "file-type-*" glyph map to it. A format family without a
+ * per-format glyph maps to a family icon instead: archives other than zip (rar, 7z, tar, gz,
+ * ...) map to the format-neutral "file-zip", so e.g. a .rar is not labelled "ZIP".
  * @param suffix Lowercased file extension, without the dot.
- * @return The icon name, or an empty string if suffix has no close match -- callers should fall
- *  back to a generic file icon rather than guess at a wrong file type.
+ * @return The icon basename, or an empty string if suffix has no close match -- callers should
+ *  fall back to a generic file icon rather than guess at a wrong file type.
  */
 UISE_DESKTOP_EXPORT QString fileTypeIconName(const QString& suffix);
 
