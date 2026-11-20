@@ -77,6 +77,12 @@ const QSize RowPreviewSize{40,40};
 // before even reaching updateListAreaHeight()'s own maxListAreaHeight clamp (fileupload.qss).
 const QSize ImagePreviewBox{220,260};
 
+// Lower bound (logical px) for the image-view preview. A tiny source (e.g. 64x42) would otherwise
+// be shown at its native size -- scaledToFit() never upscales -- and be too small to hold the
+// floating itemButtons block (menu + remove) over its top-right corner. Such a source is enlarged,
+// aspect preserved, until it covers this size, then clamped back into ImagePreviewBox.
+const QSize ImagePreviewMinSize{140,80};
+
 }
 
 //--------------------------------------------------------------------------
@@ -536,6 +542,32 @@ void FileUploadListItem::updatePreview()
             qRound(scaledPhysical.width()/dpr),
             qRound(scaledPhysical.height()/dpr)
         );
+        if (resultLogical.width()>0 && resultLogical.height()>0
+            && (resultLogical.width()<ImagePreviewMinSize.width() || resultLogical.height()<ImagePreviewMinSize.height()))
+        {
+            // too small for the overlaid buttons: upscale (aspect preserved) to cover the minimum
+            // size, then let the bounding box win so an extreme aspect ratio can't overflow it
+            qreal factor=qMax(
+                static_cast<qreal>(ImagePreviewMinSize.width())/resultLogical.width(),
+                static_cast<qreal>(ImagePreviewMinSize.height())/resultLogical.height()
+            );
+            factor=qMin(factor,qMin(
+                static_cast<qreal>(ImagePreviewBox.width())/resultLogical.width(),
+                static_cast<qreal>(ImagePreviewBox.height())/resultLogical.height()
+            ));
+            if (factor>1.0)
+            {
+                QSize enlarged(
+                    qMax(1,qRound(resultLogical.width()*factor)),
+                    qMax(1,qRound(resultLogical.height()*factor))
+                );
+                scaledPhysical=px.scaled(toPhysical(enlarged),Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+                resultLogical=QSize(
+                    qRound(scaledPhysical.width()/dpr),
+                    qRound(scaledPhysical.height()/dpr)
+                );
+            }
+        }
         scaledPhysical.setDevicePixelRatio(dpr);
         pimpl->imagePreview->setSvgIcon(nullptr);
         pimpl->imagePreview->setImageSize(resultLogical);
