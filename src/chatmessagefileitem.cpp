@@ -23,7 +23,10 @@ You may select, at your option, one of the above-listed licenses.
 
 /****************************************************************************/
 
+#include <algorithm>
+
 #include <QLabel>
+#include <QFontMetrics>
 #include <QBoxLayout>
 #include <QMouseEvent>
 #include <QPointer>
@@ -58,6 +61,48 @@ constexpr int TextLineSpacing=4;
 std::shared_ptr<SvgIcon> menuIcon(const QString& alias, QWidget* context)
 {
     return Style::instance().svgIconLocator().icon(QString("ChatMessageFiles::%1").arg(alias),context);
+}
+
+//! Widest "transferred / total" line a transfer of the given total can ever produce, so the
+//! info label can reserve it up front and never need a wider row on a later tick.
+//!
+//! formatFileSize() switches units (kb -> mb -> gb), so the transferred half is not simply "the
+//! total's own digit count": a 3 mb file passes through "1024 kb / 3 mb" (4 digits) long before
+//! it reaches "3 mb / 3 mb". Every unit below the total's own can show up to 4 digits (1023.9x
+//! rounds to 1024); the total's own unit shows at most as many digits as the total itself. Digits
+//! are proportional in most fonts, so each candidate is measured with the widest digit glyph
+//! repeated rather than with whatever digits happen to be current.
+int maxTransferTextWidth(const QFontMetrics& fm, const QString& totalText)
+{
+    int digitWidth=0;
+    for (char c='0';c<='9';++c)
+    {
+        digitWidth=std::max(digitWidth,fm.horizontalAdvance(QChar(c)));
+    }
+
+    // totalText is "<number> <unit>" (formatFileSize() with its default 0 decimals)
+    auto parts=totalText.split(QChar(' '));
+    auto totalDigits=parts.isEmpty() ? 1 : static_cast<int>(parts.first().size());
+    auto totalUnit=parts.size()>1 ? parts.last() : QString();
+
+    const auto spaceWidth=fm.horizontalAdvance(QChar(' '));
+    const auto tail=fm.horizontalAdvance(QStringLiteral(" / "))+fm.horizontalAdvance(totalText);
+
+    auto candidate=[&](int digits, const QString& unit)
+    {
+        return digits*digitWidth+spaceWidth+fm.horizontalAdvance(unit)+tail;
+    };
+
+    int width=candidate(totalDigits,totalUnit);
+    if (totalUnit==QStringLiteral("mb") || totalUnit==QStringLiteral("gb"))
+    {
+        width=std::max(width,candidate(4,QStringLiteral("kb")));
+    }
+    if (totalUnit==QStringLiteral("gb"))
+    {
+        width=std::max(width,candidate(4,QStringLiteral("mb")));
+    }
+    return width;
 }
 
 }
@@ -263,6 +308,7 @@ void ChatMessageFileItem::refresh()
     pimpl->nameLabel->setText(pimpl->item.fileName());
 
     rebuildMenu();
+    invalidateTextColumnHint();
 }
 
 //--------------------------------------------------------------------------
@@ -270,6 +316,7 @@ void ChatMessageFileItem::refresh()
 void ChatMessageFileItem::setNameText(const QString& text)
 {
     pimpl->nameLabel->setText(text);
+    invalidateTextColumnHint();
 }
 
 //--------------------------------------------------------------------------
@@ -282,6 +329,7 @@ void ChatMessageFileItem::setInfoText(const QString& text)
     // it was sized for.
     pimpl->infoLabel->setMinimumWidth(0);
     pimpl->infoLabel->setText(text);
+    invalidateTextColumnHint();
 }
 
 //--------------------------------------------------------------------------
@@ -730,9 +778,9 @@ void ChatMessageFileItem::updateInfoLabels()
         pimpl->infoLabel->setText(QStringLiteral("%1 / %2").arg(formatFileSize(it.transferred()),sizeText));
 
         // Reserve width for the widest this line can get over the course of THIS transfer --
-        // "total / total", i.e. the transferred half grown to match the total half's own digit
-        // count, which is what it approaches as the transfer completes -- so a later refresh()
-        // that only grows the transferred number (e.g. "9 mb / 246 mb" -> "21 mb / 246 mb") never
+        // see maxTransferTextWidth(), which also covers the lower-unit phase ("1024 kb / 3 mb"
+        // is wider than the final "3 mb / 3 mb") -- so a later refresh() that only grows the
+        // transferred number (e.g. "9 mb / 246 mb" -> "21 mb / 246 mb") or switches its unit never
         // needs a wider row than the one already negotiated for the very first tick. Paired with
         // ChatMessageFiles::updateItem()'s own width-change gate, which only renegotiates the
         // bubble when a row's sizeHint() actually changes -- without this reserve, every growing
@@ -740,14 +788,29 @@ void ChatMessageFileItem::updateInfoLabels()
         // first: the font (chatmessagefiles.qss's #infoLabel font-size:11px) is only guaranteed
         // applied after polish, and fontMetrics() below reads whatever font is current now.
         pimpl->infoLabel->ensurePolished();
-        auto maxText=QStringLiteral("%1 / %2").arg(sizeText,sizeText);
-        pimpl->infoLabel->setMinimumWidth(pimpl->infoLabel->fontMetrics().horizontalAdvance(maxText));
+        pimpl->infoLabel->setMinimumWidth(maxTransferTextWidth(pimpl->infoLabel->fontMetrics(),sizeText));
     }
     else
     {
         pimpl->infoLabel->setText(sizeText);
         pimpl->infoLabel->setMinimumWidth(0);
     }
+}
+
+//--------------------------------------------------------------------------
+
+void ChatMessageFileItem::invalidateTextColumnHint()
+{
+    // QLabel::setText()/setMinimumWidth() only invalidate the label's PARENT layout (textColumn's
+    // own). This row's QHBoxLayout keeps its cached size hint for textColumn until a posted
+    // LayoutRequest is processed and QLayout::activate() calls textColumn->updateGeometry() --
+    // i.e. not yet when ChatMessageFiles::updateItem() re-measures rowsSize() right after
+    // setItem(). It then saw an unchanged hint, skipped renegotiateBubbleWidth(), and the bubble
+    // stayed at its old width (clipped progress text) until some unrelated renegotiation made it
+    // jump (flicker). updateGeometry() on textColumn drops that cached item hint and invalidates
+    // this row's layout now, so the next sizeHint() is computed from the real label sizes.
+    // Invalidation only -- the recompute stays lazy.
+    pimpl->textColumn->updateGeometry();
 }
 
 //--------------------------------------------------------------------------

@@ -345,6 +345,10 @@ class UISE_DESKTOP_EXPORT ChatMessageFileItem : public QFrame
         void updateIconSlot();
         void updateInfoLabels();
 
+        //! Make sizeHint() of this row reflect the current label contents right away -- see the
+        //! definition's doc comment.
+        void invalidateTextColumnHint();
+
         //! Shared by mousePressEvent()/mouseMoveEvent()/mouseReleaseEvent() and eventFilter()
         //! (for presses landing on fileIcon/nameLabel/imagePreview, mapped to this widget's own
         //! coordinates) so the whole row -- background and every child alike -- is one drag
