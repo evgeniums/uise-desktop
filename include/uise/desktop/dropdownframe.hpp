@@ -180,6 +180,16 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
         QWidget* triggerWidget() const;
 
         /**
+         * @brief Choose what a press on the trigger widget does while the frame is open.
+         * @param enable If true (the default) the press closes the frame, see setTriggerWidget().
+         *  If false the frame stays open, the press is still consumed, and triggerPressed() is
+         *  emitted so the owner can decide (e.g. expand the popup instead of closing it).
+         */
+        void setTriggerClickCloses(bool enable) noexcept;
+
+        bool isTriggerClickCloses() const noexcept;
+
+        /**
          * @brief Enable/disable Escape and outside-click dismissal.
          * @param enable If true (the default) Escape, an outside click, or the host window
          *  being deactivated/moved/resized closes the frame on its own.
@@ -493,6 +503,12 @@ class UISE_DESKTOP_EXPORT DropdownFrame : public QFrame
          * the close.
          */
         void closeRequested(CloseReason reason);
+
+        /**
+         * @brief Emitted when the trigger widget is pressed while the frame is open and
+         *  isTriggerClickCloses() is false. The frame does not close itself in that case.
+         */
+        void triggerPressed();
 
     protected:
 

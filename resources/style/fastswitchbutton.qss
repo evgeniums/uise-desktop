@@ -2,15 +2,22 @@ uise--FastSwitchButton {
 padding:0;
 margin:0;
 border:none;
+/* Popup (default) or SlideOut (the original slide-out extra widget) */
+qproperty-previewMode: Popup;
+qproperty-dropdownAnimationDurationMs: 150;
+qproperty-dropdownEasingCurveType: 6;
+qproperty-hoverLeaveDelayMs: 120;
+/* Popup mode */
+qproperty-popupOffsetX: 4;
+qproperty-popupOffsetY: 0;
+qproperty-popupHoverEnterDelayMs: 200;
+/* SlideOut mode */
 qproperty-extraSpacing: 2;
 qproperty-dropdownOffsetX: 0;
 qproperty-dropdownOffsetY: 4;
 qproperty-extraSlideDurationMs: 150;
-qproperty-dropdownAnimationDurationMs: 150;
 qproperty-extraEasingCurveType: 6;
-qproperty-dropdownEasingCurveType: 6;
 qproperty-hoverEnterDelayMs: 0;
-qproperty-hoverLeaveDelayMs: 120;
 }
 
 uise--FastSwitchButton #extraClip {
@@ -41,9 +48,20 @@ border-radius:6px;
 padding:8px;
 }
 
+uise--FastSwitchButtonDropdown #dropdownRoot,
 uise--FastSwitchButtonDropdown #dropdownContent {
 padding:0;
 margin:0;
+}
+
+/* compact popup: the chevron row is a small centered icon button, it has no text so the
+   dropdown-wide margin-left on #text (below) must not skew it */
+uise--FastSwitchButtonDropdown #expandButton {
+padding:2px 12px;
+}
+
+uise--FastSwitchButtonDropdown #expandButton #text {
+margin-left:0;
 }
 
 uise--FastSwitchButtonDropdown #separator {
