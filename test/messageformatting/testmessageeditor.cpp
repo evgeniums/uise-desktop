@@ -5118,15 +5118,7 @@ BOOST_AUTO_TEST_CASE(TestNumbersStyleTablePastesAsTable)
     );
 }
 
-namespace {
-
-void pressReturn(MessageEditor& editor)
-{
-    QKeyEvent press(QEvent::KeyPress,Qt::Key_Return,Qt::NoModifier);
-    QApplication::sendEvent(editor.textEdit(),&press);
-}
-
-}
+// pressReturn() is the helper defined above (with the modifiers argument defaulting to none).
 
 BOOST_AUTO_TEST_CASE(TestReturnKeepsOneBlockPerLine)
 {

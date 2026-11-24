@@ -101,6 +101,7 @@ class DropdownFrame_p
         bool verticalFlipEnabled=true;
         bool restoreFocus=true;
         bool keyboardInputEnabled=false;
+        bool triggerClickCloses=true;
 
         // QWidget::mousePressEvent ignores unhandled presses by default, which makes Qt
         // redeliver the SAME press event to the parent chain. Since the click that opens the
@@ -353,6 +354,18 @@ void DropdownFrame::setTriggerWidget(QWidget* widget)
 QWidget* DropdownFrame::triggerWidget() const
 {
     return pimpl->triggerWidget;
+}
+
+//--------------------------------------------------------------------------
+
+void DropdownFrame::setTriggerClickCloses(bool enable) noexcept
+{
+    pimpl->triggerClickCloses=enable;
+}
+
+bool DropdownFrame::isTriggerClickCloses() const noexcept
+{
+    return pimpl->triggerClickCloses;
 }
 
 //--------------------------------------------------------------------------
@@ -1501,6 +1514,13 @@ bool DropdownFrame::eventFilter(QObject* obj, QEvent* event)
             {
                 // consume the press so the trigger's own mousePressEvent never runs and cannot
                 // re-open what this press is meant to close
+                if (!pimpl->triggerClickCloses)
+                {
+                    // the owner decides what a press on the trigger means (see
+                    // setTriggerClickCloses()): stay open and just report it
+                    emit triggerPressed();
+                    return true;
+                }
                 emit closeRequested(CloseReason::TriggerClick);
                 closeDropdown();
                 return true;

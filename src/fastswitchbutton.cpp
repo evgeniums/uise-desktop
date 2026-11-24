@@ -28,8 +28,13 @@ You may select, at your option, one of the above-listed licenses.
 #include <QVariantAnimation>
 #include <QBoxLayout>
 #include <QPointer>
+#include <QCursor>
+#include <QToolTip>
+#include <QTimer>
+#include <QRect>
 
 #include <uise/desktop/style.hpp>
+#include <uise/desktop/svgiconlocator.hpp>
 #include <uise/desktop/utils/layout.hpp>
 #include <uise/desktop/utils/destroywidget.hpp>
 #include <uise/desktop/utils/singleshottimer.hpp>
@@ -47,12 +52,26 @@ class FastSwitchButton_p
 {
     public:
 
+        FastSwitchButton::PreviewMode mode=FastSwitchButton::PreviewMode::Popup;
+
         IconTextButton* mainButton=nullptr;
+
+        // SlideOut mode: clip container the extra widget slides out of
         QWidget* extraClip=nullptr;
+        // both modes (SlideOut: child of extraClip, Popup: child of root)
         QPointer<QWidget> extraWidget;
 
         QPointer<FastSwitchButtonDropdown> dropdown;
         QPointer<QWidget> dropdownContent;
+
+        // Popup mode: popup content is root -> header, separator, extra widget, expand button,
+        // dropdownContent
+        QPointer<QFrame> root;
+        QPointer<IconTextButton> headerButton;
+        QPointer<QFrame> separator;
+        QPointer<IconTextButton> expandButton;
+        // Popup mode: fillExtraWidget() was called and clearExtraWidget() was not, yet
+        bool extraFilled=false;
 
         QVariantAnimation* extraAnim=nullptr;
         SingleShotTimer* hoverTimer=nullptr;
@@ -79,6 +98,8 @@ class FastSwitchButton_p
             animStopGuard=false;
         }
 
+        QString headerText;
+
         int extraSlideDurationMs=FastSwitchButton::DefaultSlideDurationMs;
         int dropdownAnimationDurationMs=FastSwitchButton::DefaultSlideDurationMs;
         int extraEasingCurveType=static_cast<int>(FastSwitchButton::DefaultEasingCurve);
@@ -86,7 +107,10 @@ class FastSwitchButton_p
         int extraSpacing=FastSwitchButton::DefaultExtraSpacing;
         int dropdownOffsetX=FastSwitchButton::DefaultDropdownOffsetX;
         int dropdownOffsetY=FastSwitchButton::DefaultDropdownOffsetY;
+        int popupOffsetX=FastSwitchButton::DefaultPopupOffsetX;
+        int popupOffsetY=FastSwitchButton::DefaultPopupOffsetY;
         int hoverEnterDelayMs=FastSwitchButton::DefaultHoverEnterDelayMs;
+        int popupHoverEnterDelayMs=FastSwitchButton::DefaultPopupHoverEnterDelayMs;
         int hoverLeaveDelayMs=FastSwitchButton::DefaultHoverLeaveDelayMs;
 
         void applyExtraFrame(qreal t)
@@ -192,6 +216,13 @@ FastSwitchButton::~FastSwitchButton()
 
 //--------------------------------------------------------------------------
 
+bool FastSwitchButton::isPopupMode() const noexcept
+{
+    return pimpl->mode==PreviewMode::Popup;
+}
+
+//--------------------------------------------------------------------------
+
 IconTextButton* FastSwitchButton::mainButton() const
 {
     return pimpl->mainButton;
@@ -222,6 +253,10 @@ QWidget* FastSwitchButton::dropdownContent() const
 
 void FastSwitchButton::setSvgIcon(std::shared_ptr<SvgIcon> icon)
 {
+    if (!pimpl->headerButton.isNull())
+    {
+        pimpl->headerButton->setSvgIcon(icon);
+    }
     pimpl->mainButton->setSvgIcon(std::move(icon));
 }
 
@@ -230,6 +265,74 @@ void FastSwitchButton::setSvgIcon(std::shared_ptr<SvgIcon> icon)
 std::shared_ptr<SvgIcon> FastSwitchButton::svgIcon() const
 {
     return pimpl->mainButton->svgIcon();
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::discardBuiltWidgets()
+{
+    // Everything a mode built lazily: the popup/drop-down frame (which owns the popup root and,
+    // in Popup mode, the extra widget and the content) and, in SlideOut mode, the extra widget
+    // living in extraClip. The create* hooks run again for the next mode.
+    if (!pimpl->dropdown.isNull())
+    {
+        destroyWidget(pimpl->dropdown);
+    }
+    if (!pimpl->extraWidget.isNull())
+    {
+        destroyWidget(pimpl->extraWidget);
+    }
+    pimpl->dropdown.clear();
+    pimpl->dropdownContent.clear();
+    pimpl->root.clear();
+    pimpl->headerButton.clear();
+    pimpl->separator.clear();
+    pimpl->expandButton.clear();
+    pimpl->extraWidget.clear();
+    pimpl->extraFilled=false;
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::setPreviewMode(PreviewMode mode)
+{
+    if (pimpl->mode==mode)
+    {
+        return;
+    }
+
+    returnToNormal(true);
+    discardBuiltWidgets();
+
+    pimpl->stopAnimation(pimpl->extraAnim);
+    pimpl->extraT=0.0;
+    if (pimpl->extraClip!=nullptr)
+    {
+        pimpl->extraClip->setVisible(false);
+    }
+
+    pimpl->mode=mode;
+}
+
+FastSwitchButton::PreviewMode FastSwitchButton::previewMode() const noexcept
+{
+    return pimpl->mode;
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::setHeaderText(const QString& text)
+{
+    pimpl->headerText=text;
+    if (!pimpl->headerButton.isNull())
+    {
+        pimpl->headerButton->setText(text);
+    }
+}
+
+QString FastSwitchButton::headerText() const
+{
+    return pimpl->headerText;
 }
 
 //--------------------------------------------------------------------------
@@ -250,6 +353,10 @@ bool FastSwitchButton::isDropdownOpen() const noexcept
 
 bool FastSwitchButton::isExtraWidgetVisible() const noexcept
 {
+    if (isPopupMode())
+    {
+        return pimpl->state==State::Hovered;
+    }
     return pimpl->state!=State::Normal;
 }
 
@@ -326,7 +433,7 @@ int FastSwitchButton::extraSpacing() const noexcept
 void FastSwitchButton::setDropdownOffsetX(int val) noexcept
 {
     pimpl->dropdownOffsetX=val;
-    if (!pimpl->dropdown.isNull())
+    if (!pimpl->dropdown.isNull() && !isPopupMode())
     {
         pimpl->dropdown->setOffsetX(val);
     }
@@ -342,7 +449,7 @@ int FastSwitchButton::dropdownOffsetX() const noexcept
 void FastSwitchButton::setDropdownOffsetY(int val) noexcept
 {
     pimpl->dropdownOffsetY=val;
-    if (!pimpl->dropdown.isNull())
+    if (!pimpl->dropdown.isNull() && !isPopupMode())
     {
         pimpl->dropdown->setOffsetY(val);
     }
@@ -355,6 +462,38 @@ int FastSwitchButton::dropdownOffsetY() const noexcept
 
 //--------------------------------------------------------------------------
 
+void FastSwitchButton::setPopupOffsetX(int val) noexcept
+{
+    pimpl->popupOffsetX=val;
+    if (!pimpl->dropdown.isNull() && isPopupMode())
+    {
+        pimpl->dropdown->setSideOffsetX(val);
+    }
+}
+
+int FastSwitchButton::popupOffsetX() const noexcept
+{
+    return pimpl->popupOffsetX;
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::setPopupOffsetY(int val) noexcept
+{
+    pimpl->popupOffsetY=val;
+    if (!pimpl->dropdown.isNull() && isPopupMode())
+    {
+        pimpl->dropdown->setSideOffsetY(val);
+    }
+}
+
+int FastSwitchButton::popupOffsetY() const noexcept
+{
+    return pimpl->popupOffsetY;
+}
+
+//--------------------------------------------------------------------------
+
 void FastSwitchButton::setHoverEnterDelayMs(int val) noexcept
 {
     pimpl->hoverEnterDelayMs=val;
@@ -363,6 +502,18 @@ void FastSwitchButton::setHoverEnterDelayMs(int val) noexcept
 int FastSwitchButton::hoverEnterDelayMs() const noexcept
 {
     return pimpl->hoverEnterDelayMs;
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::setPopupHoverEnterDelayMs(int val) noexcept
+{
+    pimpl->popupHoverEnterDelayMs=val;
+}
+
+int FastSwitchButton::popupHoverEnterDelayMs() const noexcept
+{
+    return pimpl->popupHoverEnterDelayMs;
 }
 
 //--------------------------------------------------------------------------
@@ -486,6 +637,13 @@ void FastSwitchButton::onActivated(QWidget*)
 
 //--------------------------------------------------------------------------
 
+bool FastSwitchButton::isExpandAvailable() const
+{
+    return true;
+}
+
+//--------------------------------------------------------------------------
+
 void FastSwitchButton::notifyActivated(QWidget* source)
 {
     onActivated(source);
@@ -505,6 +663,27 @@ void FastSwitchButton::onExtraWidgetClicked()
 
 void FastSwitchButton::onDropdownSelfClosed()
 {
+    if (isPopupMode())
+    {
+        if (pimpl->state==State::Normal)
+        {
+            return;
+        }
+
+        if (pimpl->mainButton->isChecked())
+        {
+            QSignalBlocker b(pimpl->mainButton);
+            pimpl->mainButton->setChecked(false);
+        }
+
+        pimpl->hoverTimer->clear();
+        setState(State::Normal);
+
+        // do NOT call dropdown()->closeDropdown() here, see below. Content is released by the
+        // frame's hidden() signal.
+        return;
+    }
+
     if (pimpl->state!=State::Dropdown)
     {
         return;
@@ -531,12 +710,40 @@ void FastSwitchButton::onDropdownSelfClosed()
 
 //--------------------------------------------------------------------------
 
+void FastSwitchButton::onTriggerPressed()
+{
+    if (pimpl->state==State::Hovered)
+    {
+        popupExpand();
+    }
+    else if (pimpl->state==State::Dropdown)
+    {
+        returnToNormal();
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::onHeaderClicked()
+{
+    onTriggerPressed();
+}
+
+//--------------------------------------------------------------------------
+
 void FastSwitchButton::showExtraWidget()
 {
     if (pimpl->state!=State::Normal || !isExtraWidgetHoverEnabled())
     {
         return;
     }
+
+    if (isPopupMode())
+    {
+        popupShow();
+        return;
+    }
+
     setState(State::Hovered);
     animateExtraWidget(true,false);
 }
@@ -549,6 +756,13 @@ void FastSwitchButton::hideExtraWidget()
     {
         return;
     }
+
+    if (isPopupMode())
+    {
+        returnToNormal();
+        return;
+    }
+
     setState(State::Normal);
     animateExtraWidget(false,false);
 }
@@ -581,9 +795,29 @@ void FastSwitchButton::ensureDropdown()
     pimpl->dropdown=new FastSwitchButtonDropdown();
     pimpl->dropdown->setAnimationDurationMs(pimpl->dropdownAnimationDurationMs);
     pimpl->dropdown->setEasingCurveType(pimpl->dropdownEasingCurveType);
-    pimpl->dropdown->setOffsetX(pimpl->dropdownOffsetX);
-    pimpl->dropdown->setOffsetY(pimpl->dropdownOffsetY);
     pimpl->dropdown->setTriggerWidget(pimpl->mainButton);
+
+    if (isPopupMode())
+    {
+        pimpl->dropdown->setSideOffsetX(pimpl->popupOffsetX);
+        pimpl->dropdown->setSideOffsetY(pimpl->popupOffsetY);
+        // a press on the main button while the popup is open expands/collapses it instead of
+        // closing it outright, see onTriggerPressed()
+        pimpl->dropdown->setTriggerClickCloses(false);
+        // Leave/Enter of the popup window itself take part in hover tracking, see eventFilter()
+        pimpl->dropdown->installEventFilter(this);
+        connect(
+            pimpl->dropdown,
+            &DropdownFrame::triggerPressed,
+            this,
+            &FastSwitchButton::onTriggerPressed
+        );
+    }
+    else
+    {
+        pimpl->dropdown->setOffsetX(pimpl->dropdownOffsetX);
+        pimpl->dropdown->setOffsetY(pimpl->dropdownOffsetY);
+    }
 
     connect(
         pimpl->dropdown,
@@ -603,6 +837,9 @@ void FastSwitchButton::ensureDropdown()
         this,
         [this]()
         {
+            // Popup mode only: the extra widget is released here, or earlier when the popup is
+            // expanded. SlideOut mode releases it when the retract animation finishes.
+            releaseExtraWidget();
             if (!pimpl->dropdownContent.isNull())
             {
                 clearDropdownContent(pimpl->dropdownContent);
@@ -623,6 +860,12 @@ void FastSwitchButton::ensureDropdown()
 void FastSwitchButton::ensureDropdownContent()
 {
     ensureDropdown();
+    if (isPopupMode())
+    {
+        ensurePopupContent();
+        return;
+    }
+
     if (!pimpl->dropdownContent.isNull())
     {
         return;
@@ -632,6 +875,92 @@ void FastSwitchButton::ensureDropdownContent()
     if (pimpl->dropdownContent)
     {
         pimpl->dropdown->setContent(pimpl->dropdownContent);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::ensurePopupContent()
+{
+    if (!pimpl->root.isNull())
+    {
+        return;
+    }
+
+    // plain local pointer: Layout::vertical() and StyleContext are templates/converting
+    // constructors that do not accept the QPointer stored in pimpl
+    auto* root=new QFrame(pimpl->dropdown);
+    pimpl->root=root;
+    root->setObjectName("dropdownRoot");
+    auto* l=Layout::vertical(root);
+
+    pimpl->headerButton=new IconTextButton(pimpl->headerText,svgIcon(),pimpl->root,IconTextButton::IconPosition::BeforeText);
+    pimpl->headerButton->setObjectName("headerButton");
+    l->addWidget(pimpl->headerButton);
+    connect(pimpl->headerButton,&IconTextButton::clicked,this,&FastSwitchButton::onHeaderClicked);
+
+    pimpl->separator=new QFrame(pimpl->root);
+    pimpl->separator->setObjectName("separator");
+    l->addWidget(pimpl->separator);
+
+    pimpl->extraWidget=createExtraWidget(pimpl->root);
+    if (pimpl->extraWidget)
+    {
+        connectExtraWidget(pimpl->extraWidget);
+        l->addWidget(pimpl->extraWidget);
+    }
+
+    pimpl->expandButton=new IconTextButton(
+        Style::instance().svgIconLocator().icon(QStringLiteral("FastSwitchButton::chevron"),root),
+        root,
+        IconTextButton::IconPosition::BeforeText
+    );
+    pimpl->expandButton->setObjectName("expandButton");
+    pimpl->expandButton->setText(QString());
+    l->addWidget(pimpl->expandButton,0,Qt::AlignHCenter);
+    connect(pimpl->expandButton,&IconTextButton::clicked,this,&FastSwitchButton::expandDropdown);
+
+    pimpl->dropdownContent=createDropdownContent(pimpl->root);
+    if (pimpl->dropdownContent)
+    {
+        l->addWidget(pimpl->dropdownContent);
+    }
+
+    pimpl->dropdown->setContent(pimpl->root);
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::applyPopupMode(bool expanded)
+{
+    // The header and the separator are shown in both modes; the rest is mode specific. Must run
+    // before the popup is measured: hidden widgets take no part in the root's size hint.
+    if (!pimpl->extraWidget.isNull())
+    {
+        pimpl->extraWidget->setVisible(!expanded);
+    }
+    if (!pimpl->expandButton.isNull())
+    {
+        pimpl->expandButton->setVisible(!expanded && isExpandAvailable());
+    }
+    if (!pimpl->dropdownContent.isNull())
+    {
+        pimpl->dropdownContent->setVisible(expanded);
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::releaseExtraWidget()
+{
+    if (!pimpl->extraFilled)
+    {
+        return;
+    }
+    pimpl->extraFilled=false;
+    if (!pimpl->extraWidget.isNull())
+    {
+        clearExtraWidget(pimpl->extraWidget);
     }
 }
 
@@ -781,10 +1110,157 @@ void FastSwitchButton::finishExtraAnimation(bool forward)
 
 //--------------------------------------------------------------------------
 
+void FastSwitchButton::popupShow()
+{
+    pimpl->hoverTimer->clear();
+    // the tooltip of the control would otherwise hang over the popup
+    QToolTip::hideText();
+
+    ensureDropdownContent();
+
+    // A popup still visible here is finishing a close animation. Settle it now rather than
+    // reverse it: DropdownFrame::popupBeside() keeps the previous measurement of a visible
+    // frame, which may be the expanded size. This runs the frame's hidden() handler, so
+    // everything is released before it is filled again below.
+    if (pimpl->dropdown->isVisible())
+    {
+        pimpl->dropdown->closeDropdown(true);
+    }
+
+    if (!pimpl->extraWidget.isNull())
+    {
+        fillExtraWidget(pimpl->extraWidget);
+        pimpl->extraFilled=true;
+    }
+    applyPopupMode(false);
+
+    setState(State::Hovered);
+
+    pimpl->dropdown->popupBeside(pimpl->mainButton);
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::popupExpand()
+{
+    if (pimpl->state!=State::Hovered)
+    {
+        return;
+    }
+
+    pimpl->hoverTimer->clear();
+
+    // the extra widget goes away in expanded mode: drop whatever it subscribed to
+    releaseExtraWidget();
+
+    if (!pimpl->dropdownContent.isNull())
+    {
+        fillDropdownContent(pimpl->dropdownContent);
+    }
+    applyPopupMode(true);
+
+    if (!pimpl->mainButton->isChecked())
+    {
+        QSignalBlocker b(pimpl->mainButton);
+        pimpl->mainButton->setChecked(true);
+    }
+
+    setState(State::Dropdown);
+
+    // re-runs the anchoring of the opening popupBeside() call against the new content size: the
+    // top-left corner stays put and the popup grows downwards
+    pimpl->dropdown->remeasure();
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::popupOpenExpanded()
+{
+    pimpl->hoverTimer->clear();
+    QToolTip::hideText();
+
+    ensureDropdownContent();
+
+    // see popupShow() on settling a popup that is still closing
+    if (pimpl->dropdown->isVisible())
+    {
+        pimpl->dropdown->closeDropdown(true);
+    }
+
+    if (!pimpl->dropdownContent.isNull())
+    {
+        fillDropdownContent(pimpl->dropdownContent);
+    }
+    applyPopupMode(true);
+
+    if (!pimpl->mainButton->isChecked())
+    {
+        QSignalBlocker b(pimpl->mainButton);
+        pimpl->mainButton->setChecked(true);
+    }
+
+    setState(State::Dropdown);
+
+    pimpl->dropdown->popupBeside(pimpl->mainButton);
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::popupReturnToNormal(bool immediate)
+{
+    const auto wasOpen=pimpl->state!=State::Normal;
+    const auto dropdownWasVisible=!pimpl->dropdown.isNull() && pimpl->dropdown->isVisible();
+
+    setState(State::Normal);
+
+    if (dropdownWasVisible)
+    {
+        // the frame's hidden() handler releases the extra widget and the content once the close
+        // animation (if any) finishes
+        pimpl->dropdown->closeDropdown(immediate);
+    }
+    else if (wasOpen)
+    {
+        // nothing is going to emit hidden(): release here
+        releaseExtraWidget();
+        if (!pimpl->dropdownContent.isNull())
+        {
+            clearDropdownContent(pimpl->dropdownContent);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::expandDropdown()
+{
+    if (!isPopupMode())
+    {
+        openDropdown();
+        return;
+    }
+    popupExpand();
+}
+
+//--------------------------------------------------------------------------
+
 void FastSwitchButton::openDropdown()
 {
     if (pimpl->state==State::Dropdown)
     {
+        return;
+    }
+
+    if (isPopupMode())
+    {
+        if (pimpl->state==State::Hovered)
+        {
+            popupExpand();
+        }
+        else
+        {
+            popupOpenExpanded();
+        }
         return;
     }
 
@@ -802,13 +1278,12 @@ void FastSwitchButton::openDropdown()
     ensureDropdownContent();
 
     // If the dropdown is still visible here, this open is reversing a close animation that a
-    // previous, very quick toggle interrupted mid-flight (see DropdownFrame's animStopGuard
-    // comment). Re-filling content in that state would tear down and rebuild rows
-    // (fillDropdownContent() destroys and recreates rows) while it is still on screen and
-    // mid-transition, which is exactly what leaves the popup with a wrong, "stuck" size for
-    // several activations afterwards -- content from the previous, already fully-settled fill
-    // is still valid, so just keep it; DropdownFrame::popupBelow() applies the identical
-    // isVisible()-gated skip internally for its own measurement.
+    // previous, very quick toggle interrupted mid-flight. Re-filling content in that state would
+    // tear down and rebuild rows (fillDropdownContent() destroys and recreates rows) while it is
+    // still on screen and mid-transition, which is exactly what leaves the popup with a wrong,
+    // "stuck" size for several activations afterwards -- content from the previous, already
+    // fully-settled fill is still valid, so just keep it; DropdownFrame::popupBelow() applies the
+    // identical isVisible()-gated skip internally for its own measurement.
     if (!pimpl->dropdown->isVisible())
     {
         fillDropdownContent(pimpl->dropdownContent);
@@ -827,6 +1302,15 @@ void FastSwitchButton::openDropdown()
 
 void FastSwitchButton::closeDropdown()
 {
+    if (isPopupMode())
+    {
+        if (pimpl->state!=State::Normal)
+        {
+            returnToNormal();
+        }
+        return;
+    }
+
     if (pimpl->state!=State::Dropdown)
     {
         return;
@@ -869,6 +1353,13 @@ void FastSwitchButton::returnToNormal(bool immediate)
         pimpl->mainButton->setChecked(false);
     }
 
+    if (isPopupMode())
+    {
+        popupReturnToNormal(immediate);
+        pimpl->inTransition=false;
+        return;
+    }
+
     auto dropdownWasVisible=!pimpl->dropdown.isNull() && pimpl->dropdown->isVisible();
 
     setState(State::Normal);
@@ -884,6 +1375,59 @@ void FastSwitchButton::returnToNormal(bool immediate)
 
 //--------------------------------------------------------------------------
 
+void FastSwitchButton::scheduleLeaveCheck()
+{
+    pimpl->hoverTimer->shot(
+        static_cast<size_t>(qMax(0,pimpl->hoverLeaveDelayMs)),
+        // SingleShotTimer::shot()/clear() replace the handler that is running right now, so what
+        // may re-arm or clear this timer runs one event loop turn later instead
+        [this](){ QTimer::singleShot(0,this,[this](){ checkHoverLeave(); }); },
+        true
+    );
+}
+
+//--------------------------------------------------------------------------
+
+void FastSwitchButton::checkHoverLeave()
+{
+    if (pimpl->state!=State::Hovered || !isPopupMode())
+    {
+        return;
+    }
+
+    // The control and its popup are two separate top-level windows with a gap between them, and
+    // Enter/Leave of an inactive tool window are not something to rely on exclusively: test the
+    // cursor against both rects and the band bridging them, and keep polling while it is inside.
+    const auto cursor=QCursor::pos();
+    const QRect buttonRect(pimpl->mainButton->mapToGlobal(QPoint(0,0)),pimpl->mainButton->size());
+    QRect popupRect;
+    if (!pimpl->dropdown.isNull())
+    {
+        popupRect=pimpl->dropdown->fullRect();
+    }
+
+    auto inside=buttonRect.contains(cursor) || popupRect.contains(cursor);
+    if (!inside && popupRect.isValid())
+    {
+        const auto top=qMax(buttonRect.top(),popupRect.top());
+        const auto bottom=qMin(buttonRect.bottom(),popupRect.bottom());
+        if (bottom>=top)
+        {
+            const auto bridge=QRect(QPoint(qMin(buttonRect.left(),popupRect.left()),top),QPoint(qMax(buttonRect.right(),popupRect.right()),bottom));
+            inside=bridge.contains(cursor);
+        }
+    }
+
+    if (inside)
+    {
+        scheduleLeaveCheck();
+        return;
+    }
+    hideExtraWidget();
+}
+
+//--------------------------------------------------------------------------
+
 void FastSwitchButton::enterEvent(QEnterEvent* event)
 {
     QFrame::enterEvent(event);
@@ -894,6 +1438,31 @@ void FastSwitchButton::enterEvent(QEnterEvent* event)
     }
 
     pimpl->hoverTimer->clear();
+
+    if (isPopupMode())
+    {
+        if (pimpl->state==State::Hovered)
+        {
+            // back on the control from its popup: the pending leave check is cancelled above
+            return;
+        }
+
+        if (pimpl->popupHoverEnterDelayMs<=0)
+        {
+            showExtraWidget();
+        }
+        else
+        {
+            // deferred for the same reason as in scheduleLeaveCheck()
+            pimpl->hoverTimer->shot(
+                static_cast<size_t>(pimpl->popupHoverEnterDelayMs),
+                [this](){ QTimer::singleShot(0,this,[this](){ showExtraWidget(); }); },
+                true
+            );
+        }
+        return;
+    }
+
     if (pimpl->hoverEnterDelayMs<=0)
     {
         showExtraWidget();
@@ -918,6 +1487,17 @@ void FastSwitchButton::leaveEvent(QEvent* event)
     }
 
     pimpl->hoverTimer->clear();
+
+    if (isPopupMode())
+    {
+        // the clear() above cancelled a pending (not yet elapsed) preview as well
+        if (pimpl->state==State::Hovered)
+        {
+            scheduleLeaveCheck();
+        }
+        return;
+    }
+
     if (pimpl->hoverLeaveDelayMs<=0)
     {
         hideExtraWidget();
@@ -926,6 +1506,36 @@ void FastSwitchButton::leaveEvent(QEvent* event)
     {
         pimpl->hoverTimer->shot(static_cast<size_t>(pimpl->hoverLeaveDelayMs),[this](){ hideExtraWidget(); },true);
     }
+}
+
+//--------------------------------------------------------------------------
+
+bool FastSwitchButton::event(QEvent* event)
+{
+    if (event->type()==QEvent::ToolTip && isPopupMode() && pimpl->state!=State::Normal)
+    {
+        // the popup is open: a tooltip would hang over it
+        return true;
+    }
+    return QFrame::event(event);
+}
+
+//--------------------------------------------------------------------------
+
+bool FastSwitchButton::eventFilter(QObject* obj, QEvent* event)
+{
+    if (isPopupMode() && obj==pimpl->dropdown.data() && pimpl->state==State::Hovered)
+    {
+        if (event->type()==QEvent::Leave)
+        {
+            scheduleLeaveCheck();
+        }
+        else if (event->type()==QEvent::Enter)
+        {
+            pimpl->hoverTimer->clear();
+        }
+    }
+    return QFrame::eventFilter(obj,event);
 }
 
 //--------------------------------------------------------------------------

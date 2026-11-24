@@ -115,6 +115,27 @@ struct Fixture
     LineEditCompletion* completion;
 };
 
+//! Runs fn in the GUI thread and waits for it. The same helper as in the other tests of this folder: each of
+//! them keeps its own copy in its anonymous namespace.
+template <typename Fn>
+void runInGui(Fn fn)
+{
+    auto handler=[fn]()
+    {
+        // the browsers own a SearchLineEdit, which looks its icons up when it is built
+        static bool styled=false;
+        if (!styled)
+        {
+            Style::instance().applyStyleSheet();
+            styled=true;
+        }
+        fn();
+        TestThread::instance()->continueTest();
+    };
+    TestThread::instance()->postGuiThread(handler);
+    TestThread::instance()->execTest();
+}
+
 } // anonymous namespace
 
 //--------------------------------------------------------------------------

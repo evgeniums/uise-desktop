@@ -158,8 +158,10 @@ padding: 0;
 /* No matching rippleInsetRight here: FastSwitchButton is not itself a ripple host -- the
  * overlay lives on its #mainButton (an IconTextButton), which the #mainButton rule below pins
  * to margin:0 and which fastswitchbutton.cpp anchors to the frame's left edge with a trailing
- * stretch item. An inset on FastSwitchButton itself would just clip the ripple inside
- * #mainButton rather than confine it to the margin band, so there is nothing to compensate. */
+ * stretch item (in Popup mode it is the frame's only visible child, the hover popup being a
+ * separate top-level window). An inset on FastSwitchButton itself would just clip the ripple
+ * inside #mainButton rather than confine it to the margin band, so there is nothing to
+ * compensate. */
 
 /* #mainButton simultaneously matches the generic "uise--NavigationBar #leftFrame
    uise--IconTextButton" rule above (margin-right:4px; padding:0;) and
@@ -167,8 +169,8 @@ padding: 0;
    border:1px solid transparent;) -- two rules, from two different files, of ambiguous
    relative specificity, both targeting the same box-model properties on the same widget.
    That ambiguity is unstable: it can resolve differently across repolish events (e.g. the
-   one triggered whenever the neighboring extra widget's clip is hidden/shown), which reads
-   as mainButton's padding briefly flipping and snapping back. Pin the complete box model
+   one triggered whenever the neighboring extra widget's clip is hidden/shown, or the popup
+   opens/closes), which reads as mainButton's padding briefly flipping and snapping back. Pin the complete box model
    explicitly here, at a selector chain long/specific enough to leave nothing for the
    generic rule above to contest. */
 uise--NavigationBar #leftFrame uise--FastSwitchButton #mainButton {
