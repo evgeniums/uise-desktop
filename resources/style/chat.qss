@@ -463,7 +463,10 @@ qproperty-rippleRadiusScaleY: 1.0;
 
 /* An informational line ("Alice joined the chat") reads as a sentence, not a heading. Colours
    come from the generic section rules in light/chat.qss and dark/chat.qss. */
-uise--AbstractChatSeparatorSection[separator_type="info"] uise--AvatarButton #text {
+/* The history floor line ("Messages before 12/03/26 are not available on this device") is a sentence too; its colours come from the
+   same generic section rules. */
+uise--AbstractChatSeparatorSection[separator_type="info"] uise--AvatarButton #text,
+uise--AbstractChatSeparatorSection[separator_type="floor"] uise--AvatarButton #text {
 font-weight: normal;
 }
 

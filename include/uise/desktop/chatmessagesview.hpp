@@ -46,6 +46,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractchatmessage.hpp>
 #include <uise/desktop/chatdatesubtitle.hpp>
 #include <uise/desktop/chatfloatingavatar.hpp>
+#include <uise/desktop/historyfloor.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -103,7 +104,7 @@ class ChatMessagesViewItem : public BaseMessageT
 
         bool isTopSeparatorVisible() const
         {
-            return isDateSeparatorVisible() || isUnreadSeparatorVisible() || isBoundaryVisible();
+            return isDateSeparatorVisible() || isUnreadSeparatorVisible() || isBoundaryVisible() || isFloorVisible();
         }
 
         //! The boundary of the history the device holds (AbstractChatSeparatorSection::TypeBoundary), above this message: the text
@@ -114,6 +115,15 @@ class ChatMessagesViewItem : public BaseMessageT
         bool isBoundaryVisible() const
         {
             return m_boundarySepVisible;
+        }
+
+        //! The history floor line (AbstractChatSeparatorSection::TypeFloor), above this message: a plain, not clickable line. Re-applied
+        //! to every loaded row by ChatMessagesView::adjustMessageList(), like the boundary.
+        void setFloorVisible(bool enable, const QString& text={});
+
+        bool isFloorVisible() const
+        {
+            return m_floorSepVisible;
         }
 
         using BoundaryClickedCb=std::function<void ()>;
@@ -144,6 +154,7 @@ class ChatMessagesViewItem : public BaseMessageT
         bool m_dtSepVisible=false;
         bool m_unreadSepVisible=false;
         bool m_boundarySepVisible=false;
+        bool m_floorSepVisible=false;
         DateSectionClickedCb m_dateSectionClickedCb;
         BoundaryClickedCb m_boundaryClickedCb;
 };
@@ -324,6 +335,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
          * @param gap true for the boundary of a gap in the middle of the history, false for the one at the top.
          */
         void boundaryClicked(bool gap);
+
+        /**
+         * @brief The view lost its last row or got its first (a chat whose every message is hidden has an empty view, and the owner
+         * shows the history floor in its place, ChatMessagesView::setHistoryFloor()).
+         */
+        void emptyChanged(bool empty);
 
         /**
          * @brief A date pill was clicked -- either an inline separator's date section or the
@@ -640,6 +657,19 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void clearGapBoundary();
 
+        /**
+         * @brief The history floor: the messages at or below the sort value `floor` are history from before this device, never loaded.
+         * A line with `text` is drawn above the first row above the floor (uise/desktop/historyfloor.hpp for the rule), only while the
+         * history is complete (setHistoryIncomplete(false)) and, when that row is the oldest loaded one, only once the start of the chat
+         * is loaded. The view recomputes it on every pass over the list, so a floor that moves moves the line.
+         */
+        void setHistoryFloor(const SortValue& floor, const QString& text);
+
+        void clearHistoryFloor();
+
+        //! Whether the view holds no row at all.
+        bool isEmptyList() const;
+
         //! Sort value of the oldest loaded item, null for an empty list.
         SortValue firstSortValue() const;
 
@@ -783,6 +813,14 @@ class ChatMessagesView : public AbstractChatMessagesView
         BoundaryLook m_topBoundary;
         BoundaryLook m_gapBoundary;
         std::optional<Id> m_gapBoundaryId;
+
+        //! See setHistoryFloor().
+        std::optional<SortValue> m_historyFloor;
+        QString m_historyFloorText;
+
+        //! The last answer of emptyChanged()
+        bool m_wasEmpty=true;
+        void updateEmptyState(bool empty);
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
 

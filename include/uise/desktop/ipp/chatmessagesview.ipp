@@ -223,6 +223,52 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setBoundaryVisible(bool enable, 
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT, typename Traits>
+void ChatMessagesViewItem<BaseMessageT,Traits>::setFloorVisible(bool enable, const QString& text)
+{
+    m_floorSepVisible=enable;
+
+    AbstractChatSeparatorSection* section=nullptr;
+    auto sep=m_ui->topSeparator();
+    if (sep==nullptr)
+    {
+        if (!enable)
+        {
+            return;
+        }
+
+        sep=m_msg->template makeWidget<AbstractChatSeparator,ChatSeparator>(m_ui);
+        m_ui->setTopSeparator(sep);
+    }
+
+    section=sep->section(AbstractChatSeparatorSection::TypeFloor);
+    if (section==nullptr)
+    {
+        if (!enable)
+        {
+            return;
+        }
+
+        section=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
+        section->setType(AbstractChatSeparatorSection::TypeFloor);
+        // the first section, like the boundary: the edge of the history comes before the date of the message above which it stands.
+        // The two are never visible together (the floor only shows while the history is complete).
+        sep->insertSection(section,0);
+    }
+
+    // re-applied on every pass over the list: skip the widget writes when nothing changed
+    if (!section->isHidden()==enable && section->text()==text)
+    {
+        return;
+    }
+
+    section->setClickable(false);
+    section->setVisible(enable);
+    section->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT, typename Traits>
 Widget* ChatMessagesViewItem<BaseMessageT,Traits>::doCreateActualWidget(QWidget* parent)
 {
     m_ui=m_msg->template makeWidget<AbstractChatMessage,ChatMessage>(parent);
@@ -679,6 +725,20 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     const bool startReached=!m_historyIncomplete
                             && (startReachedArg.has_value() ? *startReachedArg : m_listView->isBeginLoaded());
 
+    // the row the history floor line stands above, if any (only while the history is complete)
+    const int floorIndex=m_historyIncomplete
+        ? -1
+        : historyFloorIndex(
+            messages.size(),
+            [&messages](size_t index)
+            {
+                return messages[index]->msg()->sortValue();
+            },
+            m_historyFloor.has_value() ? *m_historyFloor : SortValue{},
+            m_historyFloor.has_value(),
+            startReached
+        );
+
     bool hasUnreadSep=false;
     bool prevLastInBatch=startReached;
     for (size_t i=0;i<messages.size();i++)
@@ -740,15 +800,21 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
             msg->setBoundaryVisible(look!=nullptr,look!=nullptr ? look->text : QString{},look!=nullptr && look->clickable);
         }
 
+        // the history floor: at most one row of the list carries the line
+        {
+            const bool floorHere=static_cast<int>(i)==floorIndex;
+            msg->setFloorVisible(floorHere,floorHere ? m_historyFloorText : QString{});
+        }
+
         // update last in batch for prev msg
         if (msg->isTopSeparatorVisible() && i>0)
         {
             prevLastInBatch=true;
             messages[i-1]->ui()->setLastInBatch(true);
         }
-        else if (i==0 && msg->isBoundaryVisible())
+        else if (i==0 && (msg->isBoundaryVisible() || msg->isFloorVisible()))
         {
-            // a boundary starts a batch of its own: the oldest row shows its sender below it
+            // a boundary or the floor line starts a batch of its own: the oldest row shows its sender below it
             prevLastInBatch=true;
         }
 
@@ -767,6 +833,8 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
         // set prevLastInBatch
         prevLastInBatch=lastInBatch;
     }
+
+    updateEmptyState(messages.empty());
 
     // Batch boundaries (first/last-in-batch) and avatar visibility may all have just shifted --
     // covers load/insert/remove/reorder/update, every one of which funnels through here.
@@ -1248,6 +1316,7 @@ void ChatMessagesView<BaseMessageT,Traits>::clear()
     m_dateSubtitle->hideNow();
     m_floatingAvatar->hideNow();
     setObscuredAvatarMessage(nullptr);
+    updateEmptyState(true);
 }
 
 //--------------------------------------------------------------------------
@@ -2019,6 +2088,55 @@ void ChatMessagesView<BaseMessageT,Traits>::clearGapBoundary()
     m_gapBoundary=BoundaryLook{};
     m_gapBoundaryId.reset();
     readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setHistoryFloor(const SortValue& floor, const QString& text)
+{
+    if (m_historyFloor.has_value() && *m_historyFloor==floor && m_historyFloorText==text)
+    {
+        return;
+    }
+    m_historyFloor=floor;
+    m_historyFloorText=text;
+    readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::clearHistoryFloor()
+{
+    if (!m_historyFloor.has_value())
+    {
+        return;
+    }
+    m_historyFloor.reset();
+    m_historyFloorText.clear();
+    readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+bool ChatMessagesView<BaseMessageT,Traits>::isEmptyList() const
+{
+    return m_listView->itemCount()==0;
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::updateEmptyState(bool empty)
+{
+    if (m_wasEmpty==empty)
+    {
+        return;
+    }
+    m_wasEmpty=empty;
+    emit emptyChanged(empty);
 }
 
 //--------------------------------------------------------------------------

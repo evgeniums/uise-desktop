@@ -99,6 +99,9 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
         //! The edge of the part of the history this device holds: "Load earlier messages", its loading and failed
         //! states (chatmessagesview.hpp, ChatMessagesView::setTopBoundary()). Above the date pill of its message.
         constexpr static const char* TypeBoundary="boundary";
+        //! The history floor of the chat: the messages before the device had a key are not here and never will be
+        //! (chatmessagesview.hpp, ChatMessagesView::setHistoryFloor()). Above the date pill of its message, not clickable.
+        constexpr static const char* TypeFloor="floor";
         //! The message itself is an informational line (e.g. "Alice joined the chat"), shown as
         //! this centred section while the message's own content is hidden. Kept as the LAST
         //! section, directly above where the content would be.
