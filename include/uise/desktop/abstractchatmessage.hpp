@@ -96,6 +96,9 @@ class UISE_DESKTOP_EXPORT AbstractChatSeparatorSection : public AbstractChatMess
         constexpr static const char* TypeDate="date";
         constexpr static const char* TypeFolder="folder";
         constexpr static const char* TypeUnreadMessages="unread";
+        //! The edge of the part of the history this device holds: "Load earlier messages", its loading and failed
+        //! states (chatmessagesview.hpp, ChatMessagesView::setTopBoundary()). Above the date pill of its message.
+        constexpr static const char* TypeBoundary="boundary";
         //! The message itself is an informational line (e.g. "Alice joined the chat"), shown as
         //! this centred section while the message's own content is hidden. Kept as the LAST
         //! section, directly above where the content would be.

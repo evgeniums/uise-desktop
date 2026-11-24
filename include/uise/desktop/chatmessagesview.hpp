@@ -103,7 +103,24 @@ class ChatMessagesViewItem : public BaseMessageT
 
         bool isTopSeparatorVisible() const
         {
-            return isDateSeparatorVisible() || isUnreadSeparatorVisible();
+            return isDateSeparatorVisible() || isUnreadSeparatorVisible() || isBoundaryVisible();
+        }
+
+        //! The boundary of the history the device holds (AbstractChatSeparatorSection::TypeBoundary), above this message: the text
+        //! says what it is, `clickable` makes it a button (its click calls the callback below). Re-applied to every loaded row by
+        //! ChatMessagesView::adjustMessageList(), like the date separator.
+        void setBoundaryVisible(bool enable, const QString& text={}, bool clickable=false);
+
+        bool isBoundaryVisible() const
+        {
+            return m_boundarySepVisible;
+        }
+
+        using BoundaryClickedCb=std::function<void ()>;
+
+        void setBoundaryClickedCb(BoundaryClickedCb cb)
+        {
+            m_boundaryClickedCb=std::move(cb);
         }
 
         //! Invoked when the date separator's pill is clicked. Args: the message's local date,
@@ -126,7 +143,9 @@ class ChatMessagesViewItem : public BaseMessageT
         BaseMessageT* m_msg;
         bool m_dtSepVisible=false;
         bool m_unreadSepVisible=false;
+        bool m_boundarySepVisible=false;
         DateSectionClickedCb m_dateSectionClickedCb;
+        BoundaryClickedCb m_boundaryClickedCb;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -299,6 +318,12 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         void selectedCountChanged(size_t count);
         void copySelectedRequested();
         void viewportUpdated();
+
+        /**
+         * @brief The boundary of the history the device holds was clicked (ChatMessagesView::setTopBoundary(), setGapBoundary()).
+         * @param gap true for the boundary of a gap in the middle of the history, false for the one at the top.
+         */
+        void boundaryClicked(bool gap);
 
         /**
          * @brief A date pill was clicked -- either an inline separator's date section or the
@@ -584,6 +609,40 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void setUnreadMessageCount(const QString& count);
 
+        /**
+         * @brief The history of the chat is not complete: older messages than the oldest loaded one exist, the owner is getting them.
+         *
+         * While set, a short or empty fetch toward the beginning does NOT mean the start of the chat is reached: the view never pins
+         * the "start reached" marker (so the oldest row gets no date separator and no sender header yet) and keeps asking its owner for
+         * older items. The owner clears it when the chat is complete, and then asks the view for one more fetch toward the beginning to
+         * let it pin the marker.
+         */
+        void setHistoryIncomplete(bool enable);
+
+        bool isHistoryIncomplete() const noexcept
+        {
+            return m_historyIncomplete;
+        }
+
+        /**
+         * @brief A boundary above the OLDEST loaded message ("Load earlier messages"). Only shown while setHistoryIncomplete(true).
+         *
+         * The owner enables it when the held part of the history is exhausted at the top, so it is not shown over a window that older
+         * held rows are still being prepended to. `text` is what the boundary says, `clickable` makes it a button (boundaryClicked(false)).
+         */
+        void setTopBoundary(bool enable, const QString& text={}, bool clickable=false);
+
+        /**
+         * @brief A boundary above the message `id`, the lowest message held above a gap in the middle of the history. Only shown while
+         * setHistoryIncomplete(true). boundaryClicked(true) is emitted by its click.
+         */
+        void setGapBoundary(const Id& id, const QString& text, bool clickable);
+
+        void clearGapBoundary();
+
+        //! Sort value of the oldest loaded item, null for an empty list.
+        SortValue firstSortValue() const;
+
         bool eachMessage(MessageHandler handler);
 
         bool rEachMessage(MessageHandler handler);
@@ -712,6 +771,18 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
+
+        //! See setHistoryIncomplete() and the boundaries.
+        struct BoundaryLook
+        {
+            bool enabled=false;
+            QString text;
+            bool clickable=false;
+        };
+        bool m_historyIncomplete=false;
+        BoundaryLook m_topBoundary;
+        BoundaryLook m_gapBoundary;
+        std::optional<Id> m_gapBoundaryId;
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
 

@@ -164,6 +164,65 @@ void ChatMessagesViewItem<BaseMessageT,Traits>::setUnreadSeparatorVisible(bool e
 //--------------------------------------------------------------------------
 
 template <typename BaseMessageT, typename Traits>
+void ChatMessagesViewItem<BaseMessageT,Traits>::setBoundaryVisible(bool enable, const QString& text, bool clickable)
+{
+    m_boundarySepVisible=enable;
+
+    AbstractChatSeparatorSection* section=nullptr;
+    auto sep=m_ui->topSeparator();
+    if (sep==nullptr)
+    {
+        if (!enable)
+        {
+            return;
+        }
+
+        sep=m_msg->template makeWidget<AbstractChatSeparator,ChatSeparator>(m_ui);
+        m_ui->setTopSeparator(sep);
+    }
+
+    section=sep->section(AbstractChatSeparatorSection::TypeBoundary);
+    if (section==nullptr)
+    {
+        if (!enable)
+        {
+            return;
+        }
+
+        section=m_msg->template makeWidget<AbstractChatSeparatorSection,ChatSeparatorSection>(m_ui);
+        section->setType(AbstractChatSeparatorSection::TypeBoundary);
+        // the first section: the edge of what is held comes before the date of the message above which it stands
+        sep->insertSection(section,0);
+
+        // Same wiring as the date section's click: the context is m_ui, so Qt drops it with the message widget.
+        QObject::connect(
+            section,
+            &AbstractChatSeparatorSection::clicked,
+            m_ui,
+            [this]()
+            {
+                if (m_boundaryClickedCb)
+                {
+                    m_boundaryClickedCb();
+                }
+            }
+        );
+    }
+
+    // re-applied on every pass over the list: skip the widget writes when nothing changed
+    if (!section->isHidden()==enable && section->text()==text && section->isClickable()==clickable)
+    {
+        return;
+    }
+
+    section->setClickable(clickable);
+    section->setVisible(enable);
+    section->setText(text);
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT, typename Traits>
 Widget* ChatMessagesViewItem<BaseMessageT,Traits>::doCreateActualWidget(QWidget* parent)
 {
     m_ui=m_msg->template makeWidget<AbstractChatMessage,ChatMessage>(parent);
@@ -615,7 +674,10 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
     // ABOVE the content already on screen. Load paths pass the answer explicitly because their
     // list markers are not set yet while this runs (clear()/loadItems() wipe them, they are set
     // right after); every other pass reads it from the list.
-    const bool startReached=startReachedArg.has_value() ? *startReachedArg : m_listView->isBeginLoaded();
+    // An incomplete history never has its start reached: the rows older than the oldest loaded one are on their way
+    // (setHistoryIncomplete()).
+    const bool startReached=!m_historyIncomplete
+                            && (startReachedArg.has_value() ? *startReachedArg : m_listView->isBeginLoaded());
 
     bool hasUnreadSep=false;
     bool prevLastInBatch=startReached;
@@ -652,11 +714,42 @@ void ChatMessagesView<BaseMessageT,Traits>::adjustMessageList(std::vector<Messag
             msg->setUnreadSeparatorVisible(false);
         }
 
+        // the edge of the history the device holds: above the oldest row (when the owner says the held part is exhausted
+        // there) and above the lowest row held over a gap in the middle
+        {
+            const BoundaryLook* look=nullptr;
+            bool gap=false;
+            if (m_historyIncomplete)
+            {
+                if (i==0 && m_topBoundary.enabled)
+                {
+                    look=&m_topBoundary;
+                }
+                else if (m_gapBoundaryId.has_value() && m_gapBoundary.enabled && msg->id()==*m_gapBoundaryId)
+                {
+                    look=&m_gapBoundary;
+                    gap=true;
+                }
+            }
+            msg->setBoundaryClickedCb(
+                [this,gap]()
+                {
+                    emit boundaryClicked(gap);
+                }
+            );
+            msg->setBoundaryVisible(look!=nullptr,look!=nullptr ? look->text : QString{},look!=nullptr && look->clickable);
+        }
+
         // update last in batch for prev msg
         if (msg->isTopSeparatorVisible() && i>0)
         {
             prevLastInBatch=true;
             messages[i-1]->ui()->setLastInBatch(true);
+        }
+        else if (i==0 && msg->isBoundaryVisible())
+        {
+            // a boundary starts a batch of its own: the oldest row shows its sender below it
+            prevLastInBatch=true;
         }
 
         // set first in batch
@@ -763,6 +856,7 @@ size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const 
         // adjustMessageList() for why that matters. An unknown request size (0) never claims it,
         // and neither does a partial build: older items of this very load are still to come.
         const bool startReached=allBuilt
+                                && !m_historyIncomplete
                                 && wasRequestedMaxCount>0
                                 && messageItems.size()<static_cast<size_t>(wasRequestedMaxCount);
 
@@ -816,7 +910,7 @@ size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const 
             else
             {
                 auto first=m_listView->firstItem();
-                if (first!=nullptr)
+                if (first!=nullptr && !m_historyIncomplete)
                 {
                     m_listView->setMinSortValue(first->sortValue());
 
@@ -834,6 +928,7 @@ size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const 
 
             // preprocess list with merged existing and new messages
             const bool reachesStart=wasRequestedDirection!=Direction::END
+                                    && !m_historyIncomplete
                                     && messageItems.size()<static_cast<size_t>(wasRequestedMaxCount);
             adjustMessageList(messages,reachesStart ? std::optional<bool>(true) : std::nullopt);
 
@@ -871,7 +966,7 @@ size_t ChatMessagesView<BaseMessageT,Traits>::insertFetched(bool forLoad, const 
                 else
                 {
                     auto first=m_listView->firstItem();
-                    if (first!=nullptr)
+                    if (first!=nullptr && !m_historyIncomplete)
                     {
                         m_listView->setMinSortValue(first->sortValue());
                     }
@@ -1863,6 +1958,80 @@ typename ChatMessagesView<BaseMessageT,Traits>::SortValue ChatMessagesView<BaseM
     }
 
     return firstViewportItem->sortValue();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setHistoryIncomplete(bool enable)
+{
+    if (m_historyIncomplete==enable)
+    {
+        return;
+    }
+    m_historyIncomplete=enable;
+
+    // the date separator and sender header of the oldest row, and the boundaries, depend on it
+    readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setTopBoundary(bool enable, const QString& text, bool clickable)
+{
+    if (m_topBoundary.enabled==enable && m_topBoundary.text==text && m_topBoundary.clickable==clickable)
+    {
+        return;
+    }
+    m_topBoundary.enabled=enable;
+    m_topBoundary.text=text;
+    m_topBoundary.clickable=clickable;
+    readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::setGapBoundary(const Id& id, const QString& text, bool clickable)
+{
+    if (m_gapBoundary.enabled && m_gapBoundaryId.has_value() && *m_gapBoundaryId==id
+        && m_gapBoundary.text==text && m_gapBoundary.clickable==clickable)
+    {
+        return;
+    }
+    m_gapBoundaryId=id;
+    m_gapBoundary.enabled=true;
+    m_gapBoundary.text=text;
+    m_gapBoundary.clickable=clickable;
+    readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+void ChatMessagesView<BaseMessageT,Traits>::clearGapBoundary()
+{
+    if (!m_gapBoundary.enabled && !m_gapBoundaryId.has_value())
+    {
+        return;
+    }
+    m_gapBoundary=BoundaryLook{};
+    m_gapBoundaryId.reset();
+    readjustList();
+}
+
+//--------------------------------------------------------------------------
+
+template <typename BaseMessageT,typename Traits>
+typename ChatMessagesView<BaseMessageT,Traits>::SortValue ChatMessagesView<BaseMessageT,Traits>::firstSortValue() const
+{
+    const auto* first=m_listView->firstItem();
+    if (first==nullptr)
+    {
+        return SortValue{};
+    }
+    return first->sortValue();
 }
 
 //--------------------------------------------------------------------------
