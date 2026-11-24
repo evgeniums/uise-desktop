@@ -254,6 +254,7 @@ int main(int argc, char *argv[])
         navbar
     );
     fastSwitch->setLog(log);
+    fastSwitch->setHeaderText(QStringLiteral("Recent chats"));
     navbar->addLeadingWidget(fastSwitch);
 
     navbar->addLeadingWidget(makeNavIconButton(QStringLiteral("lock"),QStringLiteral("Lock")));
@@ -282,6 +283,7 @@ int main(int argc, char *argv[])
         rightBar
     );
     fastSwitchRight->setLog(log);
+    fastSwitchRight->setHeaderText(QStringLiteral("Recent chats"));
     rightLayout->addWidget(fastSwitchRight);
 
     // --- log ---
@@ -300,7 +302,23 @@ int main(int argc, char *argv[])
         fn(fastSwitchRight);
     };
 
-    cl->addWidget(new QLabel(QStringLiteral("Extra slide, ms:")));
+    cl->addWidget(new QLabel(QStringLiteral("Mode:")));
+    auto* modeCombo=new QComboBox();
+    modeCombo->addItem(QStringLiteral("Popup"),static_cast<int>(FastSwitchButton::PreviewMode::Popup));
+    modeCombo->addItem(QStringLiteral("SlideOut"),static_cast<int>(FastSwitchButton::PreviewMode::SlideOut));
+    cl->addWidget(modeCombo);
+    QObject::connect(
+        modeCombo,
+        &QComboBox::currentIndexChanged,
+        fastSwitch,
+        [bindBoth,modeCombo](int idx)
+        {
+            auto val=static_cast<FastSwitchButton::PreviewMode>(modeCombo->itemData(idx).toInt());
+            bindBoth([val](DemoFastSwitchButton* b){ b->setPreviewMode(val); });
+        }
+    );
+
+    cl->addWidget(new QLabel(QStringLiteral("Extra slide, ms (SlideOut):")));
     auto* extraDuration=new QSpinBox();
     extraDuration->setRange(0,3000);
     extraDuration->setValue(fastSwitch->extraSlideDurationMs());
@@ -315,7 +333,7 @@ int main(int argc, char *argv[])
         }
     );
 
-    cl->addWidget(new QLabel(QStringLiteral("Dropdown, ms:")));
+    cl->addWidget(new QLabel(QStringLiteral("Dropdown/popup, ms:")));
     auto* dropDuration=new QSpinBox();
     dropDuration->setRange(0,3000);
     dropDuration->setValue(fastSwitch->dropdownAnimationDurationMs());
