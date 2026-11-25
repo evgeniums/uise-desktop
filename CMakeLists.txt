@@ -262,6 +262,7 @@ SET (HEADERS
     include/uise/desktop/chatdatesubtitle.hpp
     include/uise/desktop/chatfloatingavatar.hpp
     include/uise/desktop/chatmessagesview.hpp
+    include/uise/desktop/historyfloor.hpp
 
     include/uise/desktop/chatfileitem.hpp
     include/uise/desktop/chatmessagefileitem.hpp

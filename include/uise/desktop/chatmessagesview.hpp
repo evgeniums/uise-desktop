@@ -46,6 +46,7 @@ You may select, at your option, one of the above-listed licenses.
 #include <uise/desktop/abstractchatmessage.hpp>
 #include <uise/desktop/chatdatesubtitle.hpp>
 #include <uise/desktop/chatfloatingavatar.hpp>
+#include <uise/desktop/historyfloor.hpp>
 
 // Written as the literal namespace, not the UISE_DESKTOP_NAMESPACE_BEGIN macro: lupdate cannot expand a macro-opened
 // namespace, so it records tr() calls in this file under an unqualified context that does not
@@ -103,7 +104,33 @@ class ChatMessagesViewItem : public BaseMessageT
 
         bool isTopSeparatorVisible() const
         {
-            return isDateSeparatorVisible() || isUnreadSeparatorVisible();
+            return isDateSeparatorVisible() || isUnreadSeparatorVisible() || isBoundaryVisible() || isFloorVisible();
+        }
+
+        //! The boundary of the history the device holds (AbstractChatSeparatorSection::TypeBoundary), above this message: the text
+        //! says what it is, `clickable` makes it a button (its click calls the callback below). Re-applied to every loaded row by
+        //! ChatMessagesView::adjustMessageList(), like the date separator.
+        void setBoundaryVisible(bool enable, const QString& text={}, bool clickable=false);
+
+        bool isBoundaryVisible() const
+        {
+            return m_boundarySepVisible;
+        }
+
+        //! The history floor line (AbstractChatSeparatorSection::TypeFloor), above this message: a plain, not clickable line. Re-applied
+        //! to every loaded row by ChatMessagesView::adjustMessageList(), like the boundary.
+        void setFloorVisible(bool enable, const QString& text={});
+
+        bool isFloorVisible() const
+        {
+            return m_floorSepVisible;
+        }
+
+        using BoundaryClickedCb=std::function<void ()>;
+
+        void setBoundaryClickedCb(BoundaryClickedCb cb)
+        {
+            m_boundaryClickedCb=std::move(cb);
         }
 
         //! Invoked when the date separator's pill is clicked. Args: the message's local date,
@@ -126,7 +153,10 @@ class ChatMessagesViewItem : public BaseMessageT
         BaseMessageT* m_msg;
         bool m_dtSepVisible=false;
         bool m_unreadSepVisible=false;
+        bool m_boundarySepVisible=false;
+        bool m_floorSepVisible=false;
         DateSectionClickedCb m_dateSectionClickedCb;
+        BoundaryClickedCb m_boundaryClickedCb;
 };
 
 template <typename BaseMessageT, typename Traits>
@@ -299,6 +329,18 @@ class UISE_DESKTOP_EXPORT AbstractChatMessagesView : public QFrame
         void selectedCountChanged(size_t count);
         void copySelectedRequested();
         void viewportUpdated();
+
+        /**
+         * @brief The boundary of the history the device holds was clicked (ChatMessagesView::setTopBoundary(), setGapBoundary()).
+         * @param gap true for the boundary of a gap in the middle of the history, false for the one at the top.
+         */
+        void boundaryClicked(bool gap);
+
+        /**
+         * @brief The view lost its last row or got its first (a chat whose every message is hidden has an empty view, and the owner
+         * shows the history floor in its place, ChatMessagesView::setHistoryFloor()).
+         */
+        void emptyChanged(bool empty);
 
         /**
          * @brief A date pill was clicked -- either an inline separator's date section or the
@@ -584,6 +626,53 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         void setUnreadMessageCount(const QString& count);
 
+        /**
+         * @brief The history of the chat is not complete: older messages than the oldest loaded one exist, the owner is getting them.
+         *
+         * While set, a short or empty fetch toward the beginning does NOT mean the start of the chat is reached: the view never pins
+         * the "start reached" marker (so the oldest row gets no date separator and no sender header yet) and keeps asking its owner for
+         * older items. The owner clears it when the chat is complete, and then asks the view for one more fetch toward the beginning to
+         * let it pin the marker.
+         */
+        void setHistoryIncomplete(bool enable);
+
+        bool isHistoryIncomplete() const noexcept
+        {
+            return m_historyIncomplete;
+        }
+
+        /**
+         * @brief A boundary above the OLDEST loaded message ("Load earlier messages"). Only shown while setHistoryIncomplete(true).
+         *
+         * The owner enables it when the held part of the history is exhausted at the top, so it is not shown over a window that older
+         * held rows are still being prepended to. `text` is what the boundary says, `clickable` makes it a button (boundaryClicked(false)).
+         */
+        void setTopBoundary(bool enable, const QString& text={}, bool clickable=false);
+
+        /**
+         * @brief A boundary above the message `id`, the lowest message held above a gap in the middle of the history. Only shown while
+         * setHistoryIncomplete(true). boundaryClicked(true) is emitted by its click.
+         */
+        void setGapBoundary(const Id& id, const QString& text, bool clickable);
+
+        void clearGapBoundary();
+
+        /**
+         * @brief The history floor: the messages at or below the sort value `floor` are history from before this device, never loaded.
+         * A line with `text` is drawn above the first row above the floor (uise/desktop/historyfloor.hpp for the rule), only while the
+         * history is complete (setHistoryIncomplete(false)) and, when that row is the oldest loaded one, only once the start of the chat
+         * is loaded. The view recomputes it on every pass over the list, so a floor that moves moves the line.
+         */
+        void setHistoryFloor(const SortValue& floor, const QString& text);
+
+        void clearHistoryFloor();
+
+        //! Whether the view holds no row at all.
+        bool isEmptyList() const;
+
+        //! Sort value of the oldest loaded item, null for an empty list.
+        SortValue firstSortValue() const;
+
         bool eachMessage(MessageHandler handler);
 
         bool rEachMessage(MessageHandler handler);
@@ -712,6 +801,26 @@ class ChatMessagesView : public AbstractChatMessagesView
 
         FuncItemsRequested m_onItemsRequested;
         MessageBuilder m_messageBuilder;
+
+        //! See setHistoryIncomplete() and the boundaries.
+        struct BoundaryLook
+        {
+            bool enabled=false;
+            QString text;
+            bool clickable=false;
+        };
+        bool m_historyIncomplete=false;
+        BoundaryLook m_topBoundary;
+        BoundaryLook m_gapBoundary;
+        std::optional<Id> m_gapBoundaryId;
+
+        //! See setHistoryFloor().
+        std::optional<SortValue> m_historyFloor;
+        QString m_historyFloorText;
+
+        //! The last answer of emptyChanged()
+        bool m_wasEmpty=true;
+        void updateEmptyState(bool empty);
 
         QPointer<AbstractChatMessage> m_chatUnderMouse;
 
