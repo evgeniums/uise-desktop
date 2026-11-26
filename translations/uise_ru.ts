@@ -2822,7 +2822,7 @@ Same idiom as &quot;d&quot; above, but for seconds (e.g. &quot;12s&quot;).</extr
 <context>
     <name>uise::AbstractChatMessagesView</name>
     <message>
-        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+188"/>
+        <location filename="../include/uise/desktop/chatmessagesview.hpp" line="+218"/>
         <source>Unread messages</source>
         <translation>Непрочитанные сообщения</translation>
     </message>
